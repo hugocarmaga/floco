@@ -1,0 +1,99 @@
+import argparse
+from clustering import calculate_covs, read_graph, clip_nodes, bin_nodes, clustering, nb_parameters
+from flow_ilp import ilp
+import numpy as np
+import sys
+from datetime import datetime
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    # subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # # Create subcommands for the different tasks: getting the node coverages, getting the negative binomial parameters, and solving the ILP
+    # cov_parser = subparsers.add_parser("cov", help="Get csv file with number of aligned base pairs (coverage) per node.")
+    # cov_parser.add_argument("-g", "--graph", help="The GFA file.", required=True)
+    # cov_parser.add_argument("-a", "--graphalignment", help="The GAF file.", required=True)
+    # cov_parser.add_argument("-c", "--outcov", help="The name for the output csv file with the node coverages", required=True)
+    # cov_parser.add_argument("-p", "--ploidy", type=int, default=2, help="Ploidy of the dataset. (default:%(default)s)")
+    # cov_parser.add_argument("-b", "--bin_size", nargs=3, default=[5000,50000,5000], metavar=('MIN', 'MAX', 'STEP'), type=int, help="Set the range for the bin size to use for the NB parameters' estimation. (default:%(default)s)")
+
+    # ilp_parser = subparsers.add_parser("flow", help="Solve flow network problem to get CN information per node.")
+    # ilp_parser.add_argument("-g", "--graph", help="The GFA file.", required=True)
+    # ilp_parser.add_argument("-n", "--nodecovs", help="The csv file outputted by 'cov' with the individual node coverage.", required=True)
+    # ilp_parser.add_argument("-o", "--outfile", help="The name for the output csv file with the copy number per node", required=True)
+
+    # all_parser = subparsers.add_parser("all", help="Run cov and flow at once.")
+    # all_parser.add_argument("-g", "--graph", help="The GFA file.", required=True)
+    # all_parser.add_argument("-a", "--graphalignment", help="The GAF file.", required=True)
+    # all_parser.add_argument("-c", "--outcov", help="The name for the output csv file with the node coverages", required=True)
+    # all_parser.add_argument("-p", "--ploidy", type=int, default=2, help="Ploidy of the dataset. (default:%(default)s)")
+    # all_parser.add_argument("-o", "--outfile", help="The name for the output csv file with the copy number per node", required=True)
+    # all_parser.add_argument("-b", "--bin_size", nargs=3, default=[5000,50000,5000], metavar=('MIN', 'MAX', 'STEP'), type=int, help="Set the range for the bin size to use for the NB parameters' estimation. (default:%(default)s)")
+
+    parser.add_argument("-g", "--graph", help="The GFA file.", required=True)
+    parser.add_argument("-a", "--graphalignment", help="The GAF file.", required=False)
+    parser.add_argument("-c", "--outcov", help="The name for the output csv file with the node coverages", required=True)
+    parser.add_argument("-p", "--ploidy", type=int, default=2, help="Ploidy of the dataset. (default:%(default)s)")
+    parser.add_argument("-s", "--super_prob", type=int, default=-80, help="Probability for using the super edges. (default:%(default)s)")
+    parser.add_argument("-b", "--bin_size", default=100, type=int, help="Set the bin size to use for the NB parameters' estimation. (default:%(default)s)")
+    parser.add_argument("-d", "--pickle", type=str, help="Pickle dump with the data.", required=False)
+
+    args = parser.parse_args()
+
+    np.set_printoptions(precision=6, linewidth=sys.maxsize, suppress=True, threshold=sys.maxsize)
+
+    return args
+
+    # if args.command == "cov":
+    #     nodes, edges = read_graph(args.graph)
+    #     clip_nodes(nodes, edges)
+    #     bin_nodes(nodes, args.bin_size)
+    #     node_covs(nodes, args.graphalignment, args.ploidy, args.outcov)
+    # elif args.command == "flow":
+    #     nodes, edges = read_graph(args.graph)
+    #     clip_nodes(nodes, edges)
+    #     ilp(args.graph, args.nodecovs, args.outfile, nodes, edges)
+    # elif args.command == "all":
+    #     nodes, edges = read_graph(args.graph)
+    #     clip_nodes(nodes, edges)
+    #     node_covs(nodes, args.graphalignment, args.ploidy, args.outcov)
+    #     ilp(args.graph, args.nodecovs, args.outfile, nodes, edges)
+    # else:
+    #     raise NotImplementedError(f"Command {args.command} does not exist.",)
+
+def write_copynums(copy_numbers, out_fname):
+    with open(out_fname,"w") as out :
+        out.write("Node name,Copy number,Coverage\n")
+        for k,v in copy_numbers.items():
+            out.write(k+","+str(v[0])+","+str(v[1])+"\n")
+
+def write_ilpresults(all_results, out_fname):
+    with open(out_fname,"w") as out :
+        out.write("Name,Value\n")
+        for parts in all_results:
+            out.write(",".join([str(p) for p in parts])+"\n")
+
+
+def main():
+    args = parse_arguments()
+    import pickle
+    if args.graphalignment:
+        nodes, edges = read_graph(args.graph)
+        clip_nodes(nodes, edges)
+        nodes_to_bin = bin_nodes(nodes, args.bin_size)
+        coverages, total_bp_matches, read_depth = calculate_covs(args.graphalignment, nodes)
+        filtered_bins = clustering(nodes, nodes_to_bin)
+        r, p = nb_parameters(filtered_bins)
+        with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
+            pickle.dump((nodes,edges,coverages,r,p), f)
+    elif args.pickle:
+        nodes,edges,coverages,r,p = pickle.load(open("dump-{}.tmp.pkl".format(args.outcov), 'rb'))
+
+    copy_numbers, all_results = ilp(nodes, edges, coverages, r, p, args.bin_size, args.outcov, args.super_prob, args.ploidy)
+    print("Writing results to output files!")
+    crt = datetime.now().strftime("%d-%m_%H-%M")
+    write_copynums(copy_numbers, "copy_numbers-{}-super_{}.csv".format(args.outcov, args.super_prob))
+    write_ilpresults(all_results, "ilp_results-{}-super_{}.csv".format(args.outcov, args.super_prob))
+
+if __name__ == "__main__":
+    main()
