@@ -1,5 +1,5 @@
 import argparse
-from clustering import calculate_covs, read_graph, clip_nodes, bin_nodes, clustering, nb_parameters
+from estimation import calculate_covs, read_graph, clip_nodes, bin_nodes, filter_bins, nb_parameters
 from flow_ilp import ilp
 import numpy as np
 import sys
@@ -82,7 +82,7 @@ def main():
         clip_nodes(nodes, edges)
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
         coverages, total_bp_matches, read_depth = calculate_covs(args.graphalignment, nodes)
-        filtered_bins = clustering(nodes, nodes_to_bin)
+        filtered_bins = filter_bins(nodes, nodes_to_bin)
         r, p = nb_parameters(filtered_bins)
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
             pickle.dump((nodes,edges,coverages,r,p), f)
@@ -91,7 +91,6 @@ def main():
 
     copy_numbers, all_results = ilp(nodes, edges, coverages, r, p, args.bin_size, args.outcov, args.super_prob, args.ploidy)
     print("Writing results to output files!")
-    crt = datetime.now().strftime("%d-%m_%H-%M")
     write_copynums(copy_numbers, "copy_numbers-{}-super_{}.csv".format(args.outcov, args.super_prob))
     write_ilpresults(all_results, "ilp_results-{}-super_{}.csv".format(args.outcov, args.super_prob))
 

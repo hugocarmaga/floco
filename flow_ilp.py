@@ -43,25 +43,46 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
 
         # Iterate over all nodes to define the constraints
         for node in nodes:
+            cov = coverages.get(node)
+            if cov:
+                # PWL constraints for node CN probabilities
+                n = bin_size
+                m = nodes[node].clipped_len()
+                
+                # Check if r and p values are always within boundaries
+                if m > n * p_bin:
+                    r = (r_bin*(1-p_bin))/(1-n/m*p_bin)
+                    p = n/m * p_bin
+                    mu = r * (1-p) / p
+                    lower_bound, y = ctp.counts_to_probs(r, p, mu, cov, 3, ploidy)
+                    upper_bound = len(y)
+                    x = list(range(lower_bound, upper_bound))
+                    y = y[lower_bound:]
+                    assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
+                
+                # If not, use poisson distribution instead:
+                else:
+                    lamb =  m / n * r_bin * (1 - p_bin) / p_bin
+                    p = 10e-5
+                    r = p / (1-p) * lamb
+                    lower_bound, y = ctp.counts_to_probs(r, p, lamb, cov, 3, ploidy)
+                    upper_bound = len(y)
+                    x = list(range(lower_bound, upper_bound))
+                    y = y[lower_bound:]
+                    assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
+                     
 
-            # PWL constraints for node CN probabilities
-            n = bin_size
-            m = nodes[node].clipped_len()
-            r = (r_bin*(1-p_bin))/(1-n/m*p_bin)
-            p = n/m * p_bin
-            mu = r * (1-p) / p
-            lower_bound, y = ctp.counts_to_probs(r, p, mu, coverages[node], 3, ploidy)
-            upper_bound = len(y)
-            x = list(range(lower_bound, upper_bound))
-            y = y[lower_bound:]
-            assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
+                cn[node] = model.addVar(vtype = GRB.INTEGER, lb = lower_bound, ub = upper_bound - 1,  name = "cn_"+node)
+                model.addGenConstrPWL(cn[node], p_cn[node], x, y, "PWLConstr_"+node)
 
-            cn[node] = model.addVar(vtype = GRB.INTEGER, lb = lower_bound, ub = upper_bound - 1,  name = "cn_"+node)
-            model.addGenConstrPWL(cn[node], p_cn[node], x, y, "PWLConstr_"+node)
-
-            # Flow conservation constraint
-            model.addConstr(left_super[node] + sum(edge_flow[e] for e in l_edges[node]) == cn[node], "flow_left_" +node)
-            model.addConstr(right_super[node] + sum(edge_flow[e] for e in r_edges[node]) == cn[node], "flow_right_" +node)
+                # Flow conservation constraint
+                model.addConstr(left_super[node] + sum(edge_flow[e] for e in l_edges[node]) == cn[node], "flow_left_" +node)
+                model.addConstr(right_super[node] + sum(edge_flow[e] for e in r_edges[node]) == cn[node], "flow_right_" +node)
+            
+            else:
+                cn[node] = model.addVar(vtype = GRB.INTEGER, lb = 0, name = "cn_"+node)
+                model.addConstr(sum(edge_flow[e] for e in l_edges[node]) == cn[node], "flow_left_" +node)
+                model.addConstr(sum(edge_flow[e] for e in r_edges[node]) == cn[node], "flow_right_" +node)
 
         ### Optimize model
         print("Optimizing now!")
@@ -73,7 +94,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
 
         ### Collect results
         all_results = [["Source_prob", source_prob], ["Objective_Value", model.objVal], ["Runtime",model.Runtime] ]
-        copy_numbers = {node: [int(var.x), coverages[node]] for node, var in cn.items()}
+        copy_numbers = {node: [int(var.x), coverages.get(node)] for node, var in cn.items()}
 
         for v in model.getVars():
             all_results.append([v.varName, v.x])
