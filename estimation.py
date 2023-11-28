@@ -403,6 +403,7 @@ def nb_parameters(bins, sel_size = 100):#, bins2):
     '''Function to estimate the parameters of the Negative Binomial distribution.'''
 
     def MLE_NBinom(parameters):
+        # Changing parameters
         r, p = parameters[:2]
 
         # Check if mean is within 20% distance from the initial value
