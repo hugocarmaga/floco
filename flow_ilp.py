@@ -23,13 +23,16 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         #right_edges = {edge: model.addVar(vtype=GRB.INTEGER, lb = 0, name="re_{}_{}".format(edge.node1, edge.node2)) for edge in edges}
         edge_flow = {edge: model.addVar(vtype=GRB.INTEGER, lb = 0, name="e_{}_{}".format(edge.node1, edge.node2)) for edge in edges}
 
+        #Filter out nodes with no coverage
+        covered_nodes = {node: nodes[node] for node in nodes if coverages.get(node)}
+
         # Super-edges flow on the two sides of the node (I don't care if it's for the supersource or the supersink, only the node side matters)
-        left_super = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "l_super_"+node) for node in nodes}
-        right_super = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "r_super_"+node) for node in nodes}
+        left_super = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "l_super_"+node) for node in covered_nodes}
+        right_super = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "r_super_"+node) for node in covered_nodes}
 
         model.update()
         ### Objective function
-        model.setObjective(sum(p_cn[node] for node in nodes) + source_prob*sum(left_super[node] + right_super[node] for node in nodes), GRB.MAXIMIZE)
+        model.setObjective(sum(p_cn[node] for node in nodes) + source_prob*sum(left_super[node] + right_super[node] for node in covered_nodes), GRB.MAXIMIZE)
 
         ### Constraints
 
@@ -43,7 +46,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
 
         # Iterate over all nodes to define the constraints
         for node in nodes:
-            cov = coverages.get(node)
+            cov = covered_nodes.get(node)
             if cov:
                 # PWL constraints for node CN probabilities
                 n = bin_size

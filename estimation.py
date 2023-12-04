@@ -415,13 +415,13 @@ def nb_parameters(bins, sel_size = 100):#, bins2):
         cs = np.log(parameters[2:]/s)
         rs = np.maximum(np.arange(N_CN), 0.01) * r
         
-        sum_dist = [count * special.logsumexp(cs + stats.nbinom.logpmf(i, rs, p)) for i, count in enumerate(counts_array)]
+        sum_dist = [count * special.logsumexp(cs + stats.nbinom.logpmf(i, rs, p)) for i, count in enumerate(counts_nozero)]
 
         LL = min(1e30, -np.sum(sum_dist))
 
         # Save best LL and respective params
-        nonlocal params_max
-        nonlocal ll_max
+        global params_max
+        global ll_max
         if LL < ll_max:
             ll_max = LL
             params_max = tuple(parameters)
@@ -432,7 +432,8 @@ def nb_parameters(bins, sel_size = 100):#, bins2):
     noise_bins = bins + stats.randint.rvs(-sel_size, 2*sel_size, size=len(bins))
     # Transform the bins into frequency counts for all nodes. Turn that into an array of length (max coverage + 1)
     counts = Counter(noise_bins)
-    counts_array = np.array([counts[i] for i in range(0,max(counts.keys())+1)])
+    counts_array = np.array([counts[i] for i in range(0,int(max(counts.keys()))+1)])
+    counts_nozero = counts_array[counts_array > 0]
 
     # Iterate over the array and get the coverage value with the highest frequency (including some padding)
     s_max = 0
@@ -448,7 +449,7 @@ def nb_parameters(bins, sel_size = 100):#, bins2):
     N_CN = 7
     cs = []
     for j in range(N_CN):
-        cs.append(sum(counts_array[(j-1/2)*k_max:(j+1/2)*k_max+1]))
+        cs.append(sum(counts_array[int((j-1/2)*k_max):int((j+1/2)*k_max)+1]))
         # cs.append(0)
         # for i in range((j-1/2)*k_max, (j+1/2)*k_max+1):
         #     cs[j] += counts_array[i]
