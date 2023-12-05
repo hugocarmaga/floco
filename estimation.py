@@ -420,8 +420,8 @@ def nb_parameters(bins, sel_size = 100):#, bins2):
         LL = min(1e30, -np.sum(sum_dist))
 
         # Save best LL and respective params
-        global params_max
-        global ll_max
+        nonlocal params_max
+        nonlocal ll_max
         if LL < ll_max:
             ll_max = LL
             params_max = tuple(parameters)
