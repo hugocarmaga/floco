@@ -46,7 +46,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
 
         # Iterate over all nodes to define the constraints
         for node in nodes:
-            cov = covered_nodes.get(node)
+            cov = coverages.get(node)
             if cov:
                 # PWL constraints for node CN probabilities
                 n = bin_size
