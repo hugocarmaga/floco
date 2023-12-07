@@ -82,7 +82,6 @@ def main():
         clip_nodes(nodes, edges)
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
         coverages, total_bp_matches, read_depth = calculate_covs(args.graphalignment, nodes)
-        print(nodes_to_bin)
         filtered_bins = filter_bins(nodes, nodes_to_bin)
         r, p = nb_parameters(filtered_bins)
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
