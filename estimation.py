@@ -396,6 +396,7 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
 
     # Merge all kept bins in the same array
     filtered_bins = np.concatenate(list(binned_nodes.values()))
+    print(filtered_bins)
     
     return filtered_bins
 
