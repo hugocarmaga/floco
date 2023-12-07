@@ -33,6 +33,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         model.update()
         ### Objective function
         model.setObjective(sum(p_cn[node] for node in covered_nodes) + source_prob*sum(left_super[node] + right_super[node] for node in covered_nodes), GRB.MAXIMIZE)
+        print("Using secondary branch!")
 
         ### Constraints
 
