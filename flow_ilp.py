@@ -27,23 +27,27 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         covered_nodes = {node: nodes[node] for node in nodes if coverages.get(node)}
 
         # Super-edges flow on the two sides of the node (I don't care if it's for the supersource or the supersink, only the node side matters)
-        left_super = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "l_super_"+node) for node in covered_nodes}
-        right_super = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "r_super_"+node) for node in covered_nodes}
+        source_left = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "l_super_"+node) for node in covered_nodes}
+        source_right = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "r_super_"+node) for node in covered_nodes}
+        sink_left = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "l_super_"+node) for node in covered_nodes}
+        sink_right = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "r_super_"+node) for node in covered_nodes}
 
         model.update()
         ### Objective function
-        model.setObjective(sum(p_cn[node] for node in covered_nodes) + source_prob*sum(left_super[node] + right_super[node] for node in covered_nodes), GRB.MAXIMIZE)
+        model.setObjective(sum(p_cn[node] for node in nodes) + source_prob*sum(source_left[node] + source_right[node] + sink_left[node] + sink_right[node] for node in covered_nodes), GRB.MAXIMIZE)
         print("Using secondary branch!")
 
         ### Constraints
 
         # Some edge preprocessing to be able to get all edges per side for each node
-        l_edges = defaultdict(list)
-        r_edges = defaultdict(list)
+        l_edges_in = defaultdict(list)
+        r_edges_in = defaultdict(list)
+        l_edges_out = defaultdict(list)
+        r_edges_out = defaultdict(list)
         for e in edges:
             '''Iterate over the edges and add them to the correct side of the respective nodes'''
-            r_edges[e.node1].append(e) if e.strand1 else l_edges[e.node1].append(e)
-            l_edges[e.node2].append(e) if e.strand2 else r_edges[e.node2].append(e)
+            r_edges_out[e.node1].append(e) if e.strand1 else l_edges_out[e.node1].append(e)
+            l_edges_in[e.node2].append(e) if e.strand2 else r_edges_in[e.node2].append(e)
 
         # Iterate over all nodes to define the constraints
         for node in nodes:
@@ -79,14 +83,18 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
                 cn[node] = model.addVar(vtype = GRB.INTEGER, lb = lower_bound, ub = upper_bound - 1,  name = "cn_"+node)
                 model.addGenConstrPWL(cn[node], p_cn[node], x, y, "PWLConstr_"+node)
 
-                # Flow conservation constraint
-                model.addConstr(left_super[node] + sum(edge_flow[e] for e in l_edges[node]) == cn[node], "flow_left_" +node)
-                model.addConstr(right_super[node] + sum(edge_flow[e] for e in r_edges[node]) == cn[node], "flow_right_" +node)
+                # Flow conservation constraints
+                model.addConstr(source_left[node] + sum(edge_flow[e] for e in l_edges_in[node]) == sink_right[node] + sum(edge_flow[e] for e in r_edges_out[node]), "flow_left_" +node)
+                model.addConstr(source_right[node] + sum(edge_flow[e] for e in r_edges_in[node]) == sink_left[node] + sum(edge_flow[e] for e in l_edges_out[node]), "flow_right_" +node)
+                model.addConstr(source_left[node] + source_right[node] + sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
+                model.addConstr(sink_left[node] + sink_right[node] + sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)
             
             else:
                 cn[node] = model.addVar(vtype = GRB.INTEGER, lb = 0, name = "cn_"+node)
-                model.addConstr(sum(edge_flow[e] for e in l_edges[node]) == cn[node], "flow_left_" +node)
-                model.addConstr(sum(edge_flow[e] for e in r_edges[node]) == cn[node], "flow_right_" +node)
+                model.addConstr(sum(edge_flow[e] for e in l_edges_in[node]) == sum(edge_flow[e] for e in r_edges_out[node]), "flow_left_" +node)
+                model.addConstr(sum(edge_flow[e] for e in r_edges_in[node]) == sum(edge_flow[e] for e in l_edges_out[node]), "flow_right_" +node)
+                model.addConstr(sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
+                model.addConstr(sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)                
 
         ### Optimize model
         print("Optimizing now!")
