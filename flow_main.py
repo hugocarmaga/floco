@@ -87,7 +87,7 @@ def main():
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
             pickle.dump((nodes,edges,coverages,r,p), f)
     elif args.pickle:
-        nodes,edges,coverages,r,p = pickle.load(open("dump-{}.tmp.pkl".format(args.outcov), 'rb'))
+        nodes,edges,coverages,r,p = pickle.load(open(args.pickle, 'rb'))
 
     copy_numbers, all_results = ilp(nodes, edges, coverages, r, p, args.bin_size, args.outcov, args.super_prob, args.ploidy)
     print("Writing results to output files!")
