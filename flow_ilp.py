@@ -4,7 +4,7 @@ from math import log
 from collections import defaultdict
 import counts_to_probabs as ctp
 
-def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = -80, ploidy = 2):
+def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = -80, cheap_source = -2, ploidy = 2):
     '''Function to formulate and solve the ILP for the flow network problem.'''
     try:
         # Create a new model
@@ -26,6 +26,11 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         #Filter out nodes with no coverage
         covered_nodes = {node: nodes[node] for node in nodes if coverages.get(node)}
 
+        #Get different sets of nodes, with edges on both sides or just on the left/right side
+        double_sides = defaultdict()
+        free_left_side = defaultdict()
+        free_right_side = defaultdict()
+
         # Super-edges flow on the two sides of the node (I don't care if it's for the supersource or the supersink, only the node side matters)
         source_left = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "l_super_"+node) for node in covered_nodes}
         source_right = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "r_super_"+node) for node in covered_nodes}
@@ -34,7 +39,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
 
         model.update()
         ### Objective function
-        model.setObjective(sum(p_cn[node] for node in nodes) + source_prob*sum(source_left[node] + source_right[node] + sink_left[node] + sink_right[node] for node in covered_nodes), GRB.MAXIMIZE)
+        model.setObjective(sum(p_cn[node] for node in nodes) + source_prob*sum(source_left[node] + source_right[node] + sink_left[node] + sink_right[node] for node in double_sides) + sum(cheap_source*source_left[node] + source_prob*source_right[node] + cheap_source*sink_left[node] + source_prob*sink_right[node] for node in free_left_side) + sum(source_prob*source_left[node] + cheap_source*source_right[node] + source_prob*sink_left[node] + cheap_source*sink_right[node] for node in free_right_side), GRB.MAXIMIZE)
         print("Using secondary branch!")
 
         ### Constraints
@@ -53,6 +58,15 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         for node in nodes:
             cov = coverages.get(node)
             if cov:
+                # Add nodes to the respective "edge sides" dictionary
+                if (l_edges_in.get(node) or l_edges_out.get(node)) and (r_edges_in.get(node) or r_edges_out.get(node)):
+                    double_sides[node] = node
+                else:
+                    if l_edges_in.get(node) or l_edges_out.get(node):
+                        free_right_side[node] = node
+                    else:
+                        free_left_side[node] = node
+
                 # PWL constraints for node CN probabilities
                 n = bin_size
                 m = nodes[node].clipped_len()
