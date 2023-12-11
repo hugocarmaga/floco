@@ -32,10 +32,10 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         free_right_side = defaultdict()
 
         # Super-edges flow on the two sides of the node (I don't care if it's for the supersource or the supersink, only the node side matters)
-        source_left = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "l_super_"+node) for node in covered_nodes}
-        source_right = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "r_super_"+node) for node in covered_nodes}
-        sink_left = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "l_super_"+node) for node in covered_nodes}
-        sink_right = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "r_super_"+node) for node in covered_nodes}
+        source_left = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "source_left_"+node) for node in covered_nodes}
+        source_right = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "source_right_"+node) for node in covered_nodes}
+        sink_left = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "sink_left_"+node) for node in covered_nodes}
+        sink_right = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "sink_right_"+node) for node in covered_nodes}
 
         model.update()
         ### Objective function
@@ -66,10 +66,6 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
                         free_right_side[node] = node
                     else:
                         free_left_side[node] = node
-
-                print("Double sided of utig4-313: {}".format(double_sides.get("utig4-313")))
-                print("Free left of utig4-313: {}".format(free_left_side.get("utig4-313")))
-                print("Free right of utig4-313: {}".format(free_right_side.get("utig4-313")))
 
                 # PWL constraints for node CN probabilities
                 n = bin_size
