@@ -39,7 +39,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
 
         model.update()
         ### Objective function
-        model.setObjective(sum(p_cn[node] for node in nodes) + source_prob*sum(source_left[node] + source_right[node] + sink_left[node] + sink_right[node] for node in double_sides) + sum(cheap_source*source_left[node] + source_prob*source_right[node] + cheap_source*sink_left[node] + source_prob*sink_right[node] for node in free_left_side) + sum(source_prob*source_left[node] + cheap_source*source_right[node] + source_prob*sink_left[node] + cheap_source*sink_right[node] for node in free_right_side), GRB.MAXIMIZE)
+        #model.setObjective(sum(p_cn[node] for node in nodes) + source_prob*sum(source_left[node] + source_right[node] + sink_left[node] + sink_right[node] for node in double_sides) + sum(cheap_source*source_left[node] + source_prob*source_right[node] + cheap_source*sink_left[node] + source_prob*sink_right[node] for node in free_left_side) + sum(source_prob*source_left[node] + cheap_source*source_right[node] + source_prob*sink_left[node] + cheap_source*sink_right[node] for node in free_right_side), GRB.MAXIMIZE)
         print("Using secondary branch!")
 
         ### Constraints
@@ -110,6 +110,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
                 model.addConstr(sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
                 model.addConstr(sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)                
 
+        model.setObjective(sum(p_cn[node] for node in nodes) + source_prob*sum(source_left[node] + source_right[node] + sink_left[node] + sink_right[node] for node in double_sides) + cheap_source*sum(source_left[node] + sink_left[node] for node in free_left_side) + source_prob*sum(source_right[node] + sink_right[node] for node in free_left_side) + cheap_source*sum(source_right[node] + sink_right[node] for node in free_right_side) + source_prob*sum(source_left[node] + sink_left[node] for node in free_right_side), GRB.MAXIMIZE)
         ### Optimize model
         print("Optimizing now!")
         model.update()
