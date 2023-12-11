@@ -18,13 +18,13 @@ def counts_to_probs(r, p, mu, d, n=3, ploidy=2):
     for c in range(i, j+1):
         # Get the prior value (log(1) for anything different than the ploidy, log(2) for the ploidy value)
         prior = 0 if c != ploidy else LOG2
-        cr = max(c/2, 0.01) * r    # Compute CN times r, adjusting for CN=0
+        cr = max(c, 0.01) * r    # Compute CN times r, adjusting for CN=0
         probs_c_given_d[c] = nb.logpmf(d, cr, p) + prior
     
     # Compute probabilities to the left of the interval to include other values within a certain p-value
     lower_bound = 0
     for c in range(i-1, -1, -1):
-        cr = max(c/2, 0.01) * r
+        cr = max(c, 0.01) * r
         pval = 2 * min(nb.cdf(d, cr, p), nb.sf(d, cr, p))
         #print(pval)
         if pval < 10e-3:  # If p-value is small, stop extending
@@ -38,14 +38,14 @@ def counts_to_probs(r, p, mu, d, n=3, ploidy=2):
     MAX_RIGHT_EXT = 101
     # Extend to the right of the interval to include other values within a certain p-value
     for c in range(j+1, j+MAX_RIGHT_EXT):
-        pval = 2 * min(nb.cdf(d, c/2*r, p), nb.sf(d, c/2*r, p))
+        pval = 2 * min(nb.cdf(d, c*r, p), nb.sf(d, c*r, p))
         #print(pval)
         if pval < 10e-3:
             #print("Breaking")
             break
         else:
             prior = 0 if c != ploidy else LOG2
-            probs_c_given_d.append(nb.logpmf(d, c/2*r, p) + prior)
+            probs_c_given_d.append(nb.logpmf(d, c*r, p) + prior)
 
     # Turn list into numpy array to get the sum of all probabilities, and then substract the log of the sum from all the probabilities (see formula for further detail)
     probs_c_given_d = np.array(probs_c_given_d)
