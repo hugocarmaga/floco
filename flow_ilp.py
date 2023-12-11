@@ -67,6 +67,10 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
                     else:
                         free_left_side[node] = node
 
+                print("Double sided of utig4-313: {}".format(double_sides.get("utig4-313")))
+                print("Free left of utig4-313: {}".format(free_left_side.get("utig4-313")))
+                print("Free right of utig4-313: {}".format(free_right_side.get("utig4-313")))
+
                 # PWL constraints for node CN probabilities
                 n = bin_size
                 m = nodes[node].clipped_len()
