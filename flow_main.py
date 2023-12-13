@@ -34,7 +34,8 @@ def parse_arguments():
     parser.add_argument("-a", "--graphalignment", help="The GAF file.", required=False)
     parser.add_argument("-c", "--outcov", help="The name for the output csv file with the node coverages", required=True)
     parser.add_argument("-p", "--ploidy", type=int, default=2, help="Ploidy of the dataset. (default:%(default)s)")
-    parser.add_argument("-s", "--super_prob", type=int, default=-80, help="Probability for using the super edges. (default:%(default)s)")
+    parser.add_argument("-S", "--super_prob", type=int, default=-80, help="Probability for using the super edges when there are other edges available. (default:%(default)s)")
+    parser.add_argument("-s", "--cheap_prob", type=int, default=-2, help="Probability for using the super edges when there's no other edge available. (default:%(default)s)")
     parser.add_argument("-b", "--bin_size", default=100, type=int, help="Set the bin size to use for the NB parameters' estimation. (default:%(default)s)")
     parser.add_argument("-d", "--pickle", type=str, help="Pickle dump with the data.", required=False)
 
@@ -73,6 +74,10 @@ def write_ilpresults(all_results, out_fname):
         for parts in all_results:
             out.write(",".join([str(p) for p in parts])+"\n")
 
+def write_solutionmetrics(stats, out_fname):
+    with open(out_fname,"w") as out :
+        out.write("\n")
+
 
 def main():
     args = parse_arguments()
@@ -89,7 +94,7 @@ def main():
     elif args.pickle:
         nodes,edges,coverages,r,p = pickle.load(open(args.pickle, 'rb'))
 
-    copy_numbers, all_results = ilp(nodes, edges, coverages, r, p, args.bin_size, args.outcov, args.super_prob, args.ploidy)
+    copy_numbers, all_results = ilp(nodes, edges, coverages, r, p, args.bin_size, args.outcov, args.super_prob, args.cheap_prob, args.ploidy)
     print("Writing results to output files!")
     write_copynums(copy_numbers, "copy_numbers-{}-super_{}.csv".format(args.outcov, args.super_prob))
     write_ilpresults(all_results, "ilp_results-{}-super_{}.csv".format(args.outcov, args.super_prob))
