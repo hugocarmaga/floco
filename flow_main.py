@@ -96,8 +96,8 @@ def main():
 
     copy_numbers, all_results = ilp(nodes, edges, coverages, r, p, args.bin_size, args.outcov, args.super_prob, args.cheap_prob, args.ploidy)
     print("Writing results to output files!")
-    write_copynums(copy_numbers, "copy_numbers-{}-super_{}.csv".format(args.outcov, args.super_prob))
-    write_ilpresults(all_results, "ilp_results-{}-super_{}.csv".format(args.outcov, args.super_prob))
+    write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
+    write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
 
 if __name__ == "__main__":
     main()
