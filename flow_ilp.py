@@ -53,7 +53,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
             l_edges_in[e.node2].append(e) if e.strand2 else r_edges_in[e.node2].append(e)
         
         # Create variable for later statistics on copy number concordance with the individual node probability
-        concordance = defaultdict(int)
+        concordance = defaultdict(list)
 
         # Iterate over all nodes to define the constraints
         for node in nodes:
@@ -94,7 +94,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
                     y = y[lower_bound:]
                     assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
                      
-                concordance[node] = x[y.index(max(y))]
+                concordance[node] = [x[y.index(max(y))]]
 
                 cn[node] = model.addVar(vtype = GRB.INTEGER, lb = lower_bound, ub = upper_bound - 1,  name = "cn_"+node)
                 model.addGenConstrPWL(cn[node], p_cn[node], x, y, "PWLConstr_"+node)
@@ -106,7 +106,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
                 model.addConstr(sink_left[node] + sink_right[node] + sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)
             
             else:
-                concordance[node] = None
+                concordance[node] = [None]
 
                 cn[node] = model.addVar(vtype = GRB.INTEGER, lb = 0, name = "cn_"+node)
                 model.addConstr(sum(edge_flow[e] for e in l_edges_in[node]) == sum(edge_flow[e] for e in r_edges_out[node]), "flow_left_" +node)
@@ -130,7 +130,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         copy_numbers = {node: [int(var.x), coverages.get(node)] for node, var in cn.items()}
         
         for node, var in cn.items():
-            if concordance[node] != None:
+            if concordance[node][0] != None:
                 concordance[node] = [coverages[node], nodes[node].seqlen, int(var.x), concordance[node], int(var.x) - concordance[node]]
 
         for v in model.getVars():
