@@ -136,6 +136,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         for v in model.getVars():
             all_results.append([v.varName, v.x])
         
+        print(concordance)
         return copy_numbers, all_results, concordance
         
 
