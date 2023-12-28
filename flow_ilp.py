@@ -106,7 +106,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
                 model.addConstr(sink_left[node] + sink_right[node] + sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)
             
             else:
-                concordance[node] = [None]
+                concordance[node] = [-1]
 
                 cn[node] = model.addVar(vtype = GRB.INTEGER, lb = 0, name = "cn_"+node)
                 model.addConstr(sum(edge_flow[e] for e in l_edges_in[node]) == sum(edge_flow[e] for e in r_edges_out[node]), "flow_left_" +node)
@@ -130,7 +130,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         copy_numbers = {node: [int(var.x), coverages.get(node)] for node, var in cn.items()}
         
         for node, var in cn.items():
-            if concordance[node][0] != None:
+            if concordance[node][0] >= 0:
                 concordance[node] = [coverages[node], nodes[node].seqlen, int(var.x), concordance[node], int(var.x) - concordance[node]]
 
         for v in model.getVars():
