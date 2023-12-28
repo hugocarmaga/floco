@@ -131,7 +131,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         
         for node, var in cn.items():
             if concordance[node][0] >= 0:
-                concordance[node] = [coverages[node], nodes[node].seq_len, int(var.x), concordance[node], int(var.x) - concordance[node]]
+                concordance[node] = [coverages[node], nodes[node].seq_len, int(var.x), concordance[node][0], int(var.x) - concordance[node][0]]
 
         for v in model.getVars():
             all_results.append([v.varName, v.x])
