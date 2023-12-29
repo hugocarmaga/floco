@@ -75,7 +75,7 @@ def write_ilpresults(all_results, out_fname):
             out.write(",".join([str(p) for p in parts])+"\n")
 
 def write_solutionmetrics(concordance, out_fname):
-    discordant_nodes = sum(1 for v in concordance.values() if v[4] != 0)
+    discordant_nodes = sum(1 for v in concordance.values() if (len(v)==5 and v[4] != 0))
     covered_nodes = sum(1 for v in concordance.values() if v[0] >= 0)
     with open(out_fname,"w") as out :
         out.write("##Total number of nodes with positive length: {}\n".format(covered_nodes))
