@@ -120,7 +120,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         ### Optimize model
         print("Optimizing now!")
         model.update()
-        model.write("model_{}-super_{}.lp".format(outfile, source_prob))
+        model.write("model_{}-super_{}-cheap_{}.lp".format(outfile, source_prob, cheap_source))
         model.optimize()
 
         print("Optimization finished!")
