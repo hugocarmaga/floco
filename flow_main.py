@@ -75,10 +75,10 @@ def write_ilpresults(all_results, out_fname):
             out.write(",".join([str(p) for p in parts])+"\n")
 
 def write_solutionmetrics(concordance, out_fname):
-    discordant_nodes = sum(1 for v in concordance.values() if (v != 0 and v !=None))
-    covered_nodes = sum(1 for v in concordance.values() if v !=None)
+    discordant_nodes = sum(1 for v in concordance.values() if v[4] != 0)
+    covered_nodes = sum(1 for v in concordance.values() if v[0] >= 0)
     with open(out_fname,"w") as out :
-        out.write("##Total number of nodes with coverage: {}\n".format(covered_nodes))
+        out.write("##Total number of nodes with positive length: {}\n".format(covered_nodes))
         out.write("##Number of nodes with discordant copy numbers (%): {}({})\n".format(discordant_nodes, round(discordant_nodes/covered_nodes*100,2)))
         out.write("#Node,Coverage,Length,Predicted_CN,Likeliest_CN,CN_difference\n")
         for node in concordance:
