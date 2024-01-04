@@ -74,12 +74,14 @@ def write_ilpresults(all_results, out_fname):
         for parts in all_results:
             out.write(",".join([str(p) for p in parts])+"\n")
 
-def write_solutionmetrics(concordance, out_fname):
+def write_solutionmetrics(concordance, r, p, out_fname):
     discordant_nodes = sum(1 for v in concordance.values() if (len(v)==5 and v[4] != 0))
     covered_nodes = sum(1 for v in concordance.values() if v[0] >= 0)
     with open(out_fname,"w") as out :
         out.write("##Total number of nodes with positive length: {}\n".format(covered_nodes))
         out.write("##Number of nodes with discordant copy numbers (%): {}({})\n".format(discordant_nodes, round(discordant_nodes/covered_nodes*100,2)))
+        out.write("##Negative Binomial parameter r: {}\n".format(r))
+        out.write("##Negative Binomial parameter p: {}\n".format(p))
         out.write("#Node,Coverage,Length,Predicted_CN,Likeliest_CN,CN_difference\n")
         for node in concordance:
             out.write("{},{}\n".format(node, ",".join([str(stat) for stat in concordance[node]])))
@@ -93,8 +95,10 @@ def main():
         clip_nodes(nodes, edges)
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
         coverages, total_bp_matches, read_depth = calculate_covs(args.graphalignment, nodes)
-        filtered_bins = filter_bins(nodes, nodes_to_bin)
-        r, p = nb_parameters(filtered_bins)
+        #filtered_bins = filter_bins(nodes, nodes_to_bin)
+        #r, p = nb_parameters(filtered_bins)
+        r = 10.071123775625054
+        p = 0.001943930950501607
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
             pickle.dump((nodes,edges,coverages,r,p), f)
     elif args.pickle:
@@ -104,7 +108,7 @@ def main():
     print("Writing results to output files!")
     write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
-    write_solutionmetrics(concordance, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
+    write_solutionmetrics(concordance, r, p, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
 
 if __name__ == "__main__":
     main()
