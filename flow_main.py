@@ -95,10 +95,10 @@ def main():
         clip_nodes(nodes, edges)
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
         coverages, total_bp_matches, read_depth = calculate_covs(args.graphalignment, nodes)
-        #filtered_bins = filter_bins(nodes, nodes_to_bin)
-        #r, p = nb_parameters(filtered_bins)
-        r = 10.071123775625054
-        p = 0.001943930950501607
+        filtered_bins = filter_bins(nodes, nodes_to_bin)
+        r, p = nb_parameters(filtered_bins)
+        #r = 10.071123775625054
+        #p = 0.001943930950501607
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
             pickle.dump((nodes,edges,coverages,r,p), f)
     elif args.pickle:
