@@ -18,6 +18,7 @@ class Edge:
     strand1: bool
     strand2: bool
     ovlp: int
+    sup_reads: int = 0
 
     def __lt__(self,other):
         return self.ovlp < other.ovlp
