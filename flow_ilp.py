@@ -21,7 +21,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         # Edge flow on the two sides of the node - or just one variable for all edges
         #left_edges = {edge: model.addVar(vtype=GRB.INTEGER, lb = 0, name="le_{}_{}".format(edge.node1, edge.node2)) for edge in edges}
         #right_edges = {edge: model.addVar(vtype=GRB.INTEGER, lb = 0, name="re_{}_{}".format(edge.node1, edge.node2)) for edge in edges}
-        edge_flow = {edge: model.addVar(vtype=GRB.INTEGER, lb = 0, name="e_{}_{}".format(edge.node1, edge.node2)) for edge in edges}
+        edge_flow = {edges[edge]: model.addVar(vtype=GRB.INTEGER, lb = 0, name = edge) for edge in edges}
 
         #Filter out nodes with no coverage
         covered_nodes = {node: nodes[node] for node in nodes if coverages.get(node)}
@@ -49,8 +49,8 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         r_edges_out = defaultdict(list)
         for e in edges:
             '''Iterate over the edges and add them to the correct side of the respective nodes'''
-            r_edges_out[e.node1].append(e) if e.strand1 else l_edges_out[e.node1].append(e)
-            l_edges_in[e.node2].append(e) if e.strand2 else r_edges_in[e.node2].append(e)
+            r_edges_out[edges[e].node1].append(edges[e]) if edges[e].strand1 else l_edges_out[edges[e].node1].append(edges[e])
+            l_edges_in[edges[e].node2].append(edges[e]) if edges[e].strand2 else r_edges_in[edges[e].node2].append(edges[e])
         
         # Create variable for later statistics on copy number concordance with the individual node probability
         concordance = defaultdict(list)

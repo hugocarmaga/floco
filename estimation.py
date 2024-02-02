@@ -91,7 +91,7 @@ def write_results(nodes, coverages, read_depth, means_cov, vars_cov, means_rd, v
 def read_graph(graph_fname):
     '''This function takes a GFA file as an input, and returns a list of Edge objects, and a dictionary of {'node_name': Node object}'''
     
-    edges = list()
+    edges = defaultdict()
     nodes = defaultdict()
     g_start = perf_counter()
     with open(graph_fname,"r") as graph_file:
@@ -104,7 +104,7 @@ def read_graph(graph_fname):
                 
             # link line
             if columns[0] == "L":
-                edges.append(Edge(columns[1], columns[3], columns[2]=="+", columns[4]=="+", int(columns[5].strip("M"))))  #Append Edge object to the list of edges
+                edges["e_{}_{}_{}_{}".format(columns[1],columns[2],columns[3],columns[4])] = Edge(columns[1], columns[3], columns[2]=="+", columns[4]=="+", int(columns[5].strip("M")))  #Add Edge object to the dictionary of edges
 
                 # Add number of edges connected to each side of each node
                 if columns[2] == "+":
@@ -118,8 +118,6 @@ def read_graph(graph_fname):
                     nodes[columns[3]].r_edges += 1
     g_stop = perf_counter()
     print("Graph read in {}s".format(g_stop-g_start), file=sys.stderr)
-    # Sort edges by decreasing overlap size
-    edges.sort(reverse=True)
 
     return nodes, edges
 
@@ -127,8 +125,11 @@ def clip_nodes(nodes,edges):
     '''This function iterates over the list of edges to decide where to clip the nodes, in order to get rid of the overlaps, aiming to get the maximum amount of non-duplicated information. It takes as an input the list of edges and 
     dictionary of nodes produced by read_graph(), outputting a new dictionary of nodes with the updated clipping information.'''
     c_start = perf_counter()
+    # Sort edges by decreasing overlap size
+    edge_list = list(edges.values())
+    edge_list.sort(reverse=True)
     # Iterate over list of edges, and clip the nodes to get rid of overlaps.
-    for edge in edges:
+    for edge in edge_list:
         # First, we get the clipping values for the corresponding ends of the nodes
         clip_node1 = nodes[edge.node1].r_clipping if edge.strand1 else nodes[edge.node1].l_clipping
         clip_node2 = nodes[edge.node2].l_clipping if edge.strand2 else nodes[edge.node2].r_clipping
@@ -214,6 +215,10 @@ def calculate_covs(alignment_fname, nodes):
 
             # We create a list of lists, with the bigger one having all the nodes present in the alignment, and then, for each node, we save the node name and its strand
             aln_nodes = [[j, i == ">"] for i, j in zip(re.findall('[<>]',columns[5]),re.split('[<>]',columns[5])[1:])]
+
+            #Add "edge coverage" to the edge dictionary
+            for i in range(len(aln_nodes)-1):
+                pass
 
             # Asserting that we have at least one node in the list
             if len(aln_nodes) == 0:

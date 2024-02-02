@@ -33,7 +33,7 @@ def counts_to_probs(r, p, mu, d, n=3, ploidy=2):
             break
         else:   # Add the probability otherwise
             prior = 0 if c != 0 else LOG2
-            probs_c_given_d[c] = nb.logpmf(d, cr, p) #+ prior
+            probs_c_given_d[c] = nb.logpmf(d, cr, p) + prior
 
     MAX_RIGHT_EXT = 101
     # Extend to the right of the interval to include other values within a certain p-value
