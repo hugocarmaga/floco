@@ -191,15 +191,15 @@ def clip_nodes(nodes,edges):
     c_stop = perf_counter()
     print("Nodes clipped in {}s".format(c_stop-c_start), file=sys.stderr)
 
-def calculate_covs(alignment_fname, nodes):
+def calculate_covs(alignment_fname, nodes, edges):
     '''This function takes the GAF file as an input, as well as the dictionary with the Node objects, in order to count the number of aligned base pairs per node.'''
 
     nodes = {k: v for k, v in nodes.items() if v.clipped_len() > 0}  #Filter out nodes where the left clipping point is bigger (or the same) than the rigth clipping one
 
     # We create a dict to save the number of aligned bp per node, and we also initiate a counter for the total number of aligned bp in the non-clipped area of the node
     coverages = {key:0 for key in nodes}
-    total_bp_matches = 0
-    read_depth = {key:0 for key in nodes if nodes[key].clipped_len() < 101}
+    #total_bp_matches = 0
+    #read_depth = {key:0 for key in nodes if nodes[key].clipped_len() < 101}
 
     nr_align = 0
     #a_start = perf_counter()
@@ -218,7 +218,18 @@ def calculate_covs(alignment_fname, nodes):
 
             #Add "edge coverage" to the edge dictionary
             for i in range(len(aln_nodes)-1):
-                pass
+                n1=aln_nodes[i][0]
+                n2=aln_nodes[i+1][0]
+                s1="+" if aln_nodes[i][1] else "-"
+                s2="+" if aln_nodes[i+1][1] else "-"
+                s11="-" if s1=="+" else "+"
+                s22="+" if s2=="-" else "-"
+                edge1 = "e_{}_{}_{}_{}".format(n1,s1,n2,s2)
+                edge2 = "e_{}_{}_{}_{}".format(n2,s22,n1,s11)
+                if edges.get(edge1):
+                    edges[edge1].sup_reads += 1
+                if edges.get(edge2):
+                    edges[edge2].sup_reads += 1
 
             # Asserting that we have at least one node in the list
             if len(aln_nodes) == 0:
@@ -231,24 +242,24 @@ def calculate_covs(alignment_fname, nodes):
                         # We want the number of base pairs within the non-clipped area of the node. So, the end position of interest will be the minimum value between the end of the alignment and the end of the non-clipped area of the node. Same reasoning for the start
                         cov = max(nodes[aln_nodes[0][0]].single_node(start_pos, end_pos), 0)
                         coverages[aln_nodes[0][0]] += cov
-                        total_bp_matches += cov
+                        #total_bp_matches += cov
                         if nodes[aln_nodes[0][0]].bins != None: 
                             #b_start = perf_counter()
                             update_bins(nodes[aln_nodes[0][0]], start_pos, end_pos)
                             #b_stop = perf_counter()
                             #print("Updating bins for node {}: {}s".format(aln_nodes[0][0], b_stop-b_start), file=sys.stderr)
-                        if aln_nodes[0][0] in read_depth:
+                        '''if aln_nodes[0][0] in read_depth:
                             if start_pos <= nodes[aln_nodes[0][0]].middle_point() < end_pos:
-                                read_depth[aln_nodes[0][0]] += 1
+                                read_depth[aln_nodes[0][0]] += 1'''
                     else:       # Negative strand
                         cov = max(nodes[aln_nodes[0][0]].single_node(start_pos, end_pos, False), 0)
                         coverages[aln_nodes[0][0]] += cov
-                        total_bp_matches += cov
+                        #total_bp_matches += cov
                         if nodes[aln_nodes[0][0]].bins != None: update_bins(nodes[aln_nodes[0][0]], int(columns[6]) - end_pos, int(columns[6]) - start_pos)
 
-                        if aln_nodes[0][0] in read_depth:
+                        '''if aln_nodes[0][0] in read_depth:
                             if nodes[aln_nodes[0][0]].seq_len - end_pos <= nodes[aln_nodes[0][0]].middle_point() < nodes[aln_nodes[0][0]].seq_len - start_pos:
-                                read_depth[aln_nodes[0][0]] += 1
+                                read_depth[aln_nodes[0][0]] += 1'''
 
             # If there's more than one node, we need to find the starting point in the first node and the end point in the last one, as the middle nodes will be aligned entirely
             else:
@@ -259,34 +270,34 @@ def calculate_covs(alignment_fname, nodes):
                         # In case the start position is the maximum value in both cases, this means that it's located right of the non-clipped area, meaning that there's no aligned bp in that same area.
                         cov = nodes[aln_nodes[0][0]].first_node(start_pos)
                         coverages[aln_nodes[0][0]] += cov
-                        total_bp_matches += cov
+                        #total_bp_matches += cov
                         if nodes[aln_nodes[0][0]].bins != None: update_bins(nodes[aln_nodes[0][0]], start_pos, nodes[aln_nodes[0][0]].right_end())
 
-                        if aln_nodes[0][0] in read_depth:
+                        '''if aln_nodes[0][0] in read_depth:
                             if start_pos <= nodes[aln_nodes[0][0]].middle_point():
-                                read_depth[aln_nodes[0][0]] += 1
+                                read_depth[aln_nodes[0][0]] += 1'''
 
                     else:
                         # Here, the same reasoning as above applies, just in the reverse direction, hence the use of the minimum, instead of the maximum
                         cov = nodes[aln_nodes[0][0]].last_node(nodes[aln_nodes[0][0]].seq_len - start_pos)
                         coverages[aln_nodes[0][0]] += cov
-                        total_bp_matches += cov
+                        #total_bp_matches += cov
                         if nodes[aln_nodes[0][0]].bins != None: update_bins(nodes[aln_nodes[0][0]], nodes[aln_nodes[0][0]].l_clipping, nodes[aln_nodes[0][0]].seq_len - start_pos)
 
-                        if aln_nodes[0][0] in read_depth:
+                        '''if aln_nodes[0][0] in read_depth:
                             if nodes[aln_nodes[0][0]].middle_point() < nodes[aln_nodes[0][0]].seq_len - start_pos:
-                                read_depth[aln_nodes[0][0]] += 1
+                                read_depth[aln_nodes[0][0]] += 1'''
 
                 # We iterate on all the nodes in the middle of the alignment (if they exist), those where the entire non-clipped area of the node will be counted, given that the alignment spans the entire node
                 for i in range(1,len(aln_nodes)-1):
                     if nodes.get(aln_nodes[i][0]) != None:
                         cov = nodes[aln_nodes[i][0]].clipped_len()
                         coverages[aln_nodes[i][0]] += cov
-                        total_bp_matches += cov
+                        #total_bp_matches += cov
                         if nodes[aln_nodes[i][0]].bins != None: update_bins(nodes[aln_nodes[i][0]], nodes[aln_nodes[i][0]].l_clipping, nodes[aln_nodes[i][0]].right_end())
 
-                        if aln_nodes[i][0] in read_depth:
-                            read_depth[aln_nodes[i][0]] += 1
+                        '''if aln_nodes[i][0] in read_depth:
+                            read_depth[aln_nodes[i][0]] += 1'''
                 
                 # Lastly, we check for the last node, to find the ending position of the alignment. The same reasoning as for the first node applies here.
                 if nodes.get(aln_nodes[-1][0]) != None:
@@ -294,28 +305,28 @@ def calculate_covs(alignment_fname, nodes):
                         node_end = nodes[aln_nodes[-1][0]].seq_len - (int(columns[6]) - end_pos)
                         cov = nodes[aln_nodes[-1][0]].last_node(node_end)
                         coverages[aln_nodes[-1][0]] += cov
-                        total_bp_matches += cov
+                        #total_bp_matches += cov
                         if nodes[aln_nodes[-1][0]].bins != None: update_bins(nodes[aln_nodes[-1][0]], nodes[aln_nodes[-1][0]].l_clipping, node_end)
 
-                        if aln_nodes[-1][0] in read_depth:
+                        '''if aln_nodes[-1][0] in read_depth:
                             if nodes[aln_nodes[-1][0]].middle_point() < node_end:
-                                read_depth[aln_nodes[-1][0]] += 1
+                                read_depth[aln_nodes[-1][0]] += 1'''
                         
                     else:
                         node_end = int(columns[6]) - end_pos
                         cov = nodes[aln_nodes[-1][0]].first_node(node_end)
                         coverages[aln_nodes[-1][0]] += cov
-                        total_bp_matches += cov
+                        #total_bp_matches += cov
                         if nodes[aln_nodes[-1][0]].bins != None: update_bins(nodes[aln_nodes[-1][0]], node_end, nodes[aln_nodes[-1][0]].right_end())
 
-                        if aln_nodes[-1][0] in read_depth:
+                        '''if aln_nodes[-1][0] in read_depth:
                             if node_end <= nodes[aln_nodes[-1][0]].middle_point():
-                                read_depth[aln_nodes[-1][0]] += 1
+                                read_depth[aln_nodes[-1][0]] += 1'''
 
     #a_stop = perf_counter()
     #print("Read {} alignments in {}s".format(nr_align,a_stop-a_start), file=sys.stderr)
 
-    return coverages, total_bp_matches, read_depth
+    return coverages #, total_bp_matches, read_depth
 
 
 def calculate_avg_cov(nodes, total_bp_matches, ploidy):

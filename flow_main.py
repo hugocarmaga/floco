@@ -77,7 +77,7 @@ def write_ilpresults(all_results, out_fname):
 def write_solutionmetrics(concordance, r, p, nodes, out_fname):
     discordant_nodes = sum(1 for v in concordance.values() if (len(v)==5 and v[4] != 0))
     covered_nodes = sum(1 for v in concordance.values() if v[0] >= 0)
-    discordant_clipped_bp = sum(nodes[node].clipped_len() for node in concordance if concordance[node][4] != 0)
+    discordant_clipped_bp = sum(nodes[node].clipped_len() for node in concordance if concordance[node][0] >= 0 and concordance[node][4] != 0)
     full_length = sum(nodes[node].clipped_len() for node in nodes)
     with open(out_fname,"w") as out :
         out.write("##Total number of nodes with positive length: {}\n".format(covered_nodes))
@@ -97,7 +97,7 @@ def main():
         nodes, edges = read_graph(args.graph)
         clip_nodes(nodes, edges)
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
-        coverages, total_bp_matches, read_depth = calculate_covs(args.graphalignment, nodes)
+        coverages = calculate_covs(args.graphalignment, nodes, edges)
         filtered_bins = filter_bins(nodes, nodes_to_bin)
         r, p = nb_parameters(filtered_bins)
         #r = 10.071123775625054
