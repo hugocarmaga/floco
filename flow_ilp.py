@@ -4,7 +4,7 @@ from math import log
 from collections import defaultdict
 import counts_to_probabs as ctp
 
-def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = -80, cheap_source = -2, ploidy = 2):
+def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = -80, cheap_source = -2, ploidy = 2, epsilon = 0.3):
     '''Function to formulate and solve the ILP for the flow network problem.'''
     try:
         # Create a new model
