@@ -4,7 +4,7 @@ from math import log
 from collections import defaultdict
 import counts_to_probabs as ctp
 
-def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = -80, cheap_source = -2, ploidy = 2, epsilon = 0.3):
+def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = -80, cheap_source = -2, epsilon = 0.3):
     '''Function to formulate and solve the ILP for the flow network problem.'''
     try:
         # Create a new model
@@ -77,7 +77,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
                     r = (r_bin*(1-p_bin))/(1-n/m*p_bin)
                     p = n/m * p_bin
                     mu = r * (1-p) / p
-                    lower_bound, y = ctp.counts_to_probs(r, p, mu, cov, 3, ploidy, epsilon)
+                    lower_bound, y = ctp.counts_to_probs(r, p, mu, cov, 3, epsilon)
                     upper_bound = len(y)
                     x = list(range(lower_bound, upper_bound))
                     y = y[lower_bound:]
@@ -88,7 +88,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
                     lamb =  m / n * r_bin * (1 - p_bin) / p_bin
                     p = 10e-5
                     r = p / (1-p) * lamb
-                    lower_bound, y = ctp.counts_to_probs(r, p, lamb, cov, 3, ploidy, epsilon)
+                    lower_bound, y = ctp.counts_to_probs(r, p, lamb, cov, 3, epsilon)
                     upper_bound = len(y)
                     x = list(range(lower_bound, upper_bound))
                     y = y[lower_bound:]
