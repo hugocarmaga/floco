@@ -4,7 +4,7 @@ from math import log
 from collections import defaultdict
 import counts_to_probabs as ctp
 
-def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = -80, cheap_source = -2, epsilon = 0.3):
+def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = -80, cheap_source = -2, epsilon = 0.3, WEIGHT = 1):
     '''Function to formulate and solve the ILP for the flow network problem.'''
     try:
         # Create a new model
@@ -114,7 +114,6 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
                 model.addConstr(sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
                 model.addConstr(sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)           
 
-        WEIGHT = 1
         r_edge = (r_bin*(1-p_bin))/(1-bin_size*p_bin)
         p_edge = bin_size * p_bin
         ### Objective function
