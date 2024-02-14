@@ -54,6 +54,12 @@ def counts_to_probs(r, p, mu, d, n=3, epsilon=0.3):
 
     return lower_bound, list(probs_c_given_d)
 
+def edge_cov_pen(r, p, d):
+    # Compute p_e0 and p_e1 for each edge, taking their "coverage" as an input
+    p_e0 = nb.logsf(d, r, p)
+    p_e1 = nb.logcdf(d, r, p)
+
+    return p_e1-p_e0
 
 def plotting(nodes, coverages, r_bin, p_bin, bin_size):
     stats = list()
