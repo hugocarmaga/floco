@@ -98,9 +98,9 @@ def main():
     if args.graphalignment:
         nodes, edges = read_graph(args.graph)
         clip_nodes(nodes, edges)
-        nodes_to_bin = bin_nodes(nodes, args.bin_size)
+        #nodes_to_bin = bin_nodes(nodes, args.bin_size)
         coverages = calculate_covs(args.graphalignment, nodes, edges)
-        filtered_bins = filter_bins(nodes, nodes_to_bin)
+        #filtered_bins = filter_bins(nodes, nodes_to_bin)
         #r, p = nb_parameters(filtered_bins)
         r = 10.071123775625054
         p = 0.001943930950501607
