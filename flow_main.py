@@ -102,8 +102,8 @@ def main():
         coverages = calculate_covs(args.graphalignment, nodes, edges)
         #filtered_bins = filter_bins(nodes, nodes_to_bin)
         #r, p = nb_parameters(filtered_bins)
-        r = 10.071123775625054
-        p = 0.001943930950501607
+        r = 4.371351874042581
+        p = 0.002156213101104576
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
             pickle.dump((nodes,edges,coverages,r,p), f)
     elif args.pickle:
