@@ -120,7 +120,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
         model.setObjective(sum(p_cn[node] for node in nodes) + source_prob * sum(source_left[node] + source_right[node] + sink_left[node] + sink_right[node] for node in double_sides) +
                            sum(cheap_source*source_left[node] + source_prob*source_right[node] + cheap_source*sink_left[node] + source_prob*sink_right[node] for node in free_left_side) +
                            sum(source_prob*source_left[node] + cheap_source*source_right[node] + source_prob*sink_left[node] + cheap_source*sink_right[node] for node in free_right_side) +
-                           WEIGHT * sum(edge_flow[edges[e]] * ctp.edge_cov_pen(r_edge, p_edge, edges[e].sup_reads) for e in edges), GRB.MAXIMIZE)
+                           WEIGHT * sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(r_edge, p_edge, edges[e].sup_reads)) for e in edges), GRB.MAXIMIZE)
 
         ### Optimize model
         print("Optimizing now!")
