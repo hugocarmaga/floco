@@ -350,7 +350,7 @@ def bin_nodes(nodes, bin_size):
     sorted_nodes = [k for k in sorted(nodes.values(), reverse=True)]'''
     nodes_to_bin = list()
     for node in nodes:
-        if nodes[node].clipped_len() >= 100:
+        if nodes[node].clipped_len() >= bin_size:
             #break
         #else:
             nodes_to_bin.append(nodes[node].name)
