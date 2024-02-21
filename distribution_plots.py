@@ -29,7 +29,7 @@ def main():
         r, p = nb_parameters(bins)
         print("NB parameters for {} bin size are r: {} and p: {}".format(size,r,p))
         
-        with open("bp_coverage_per_bin-size_{}.txt", 'w') as o:
+        with open("bp_coverage_per_bin-size_{}.txt".format(size), 'w') as o:
             for bin in bins:
                 o.write(str(bin)+"\n")
 
