@@ -38,7 +38,7 @@ def main():
 
         xmin, xmax = plt.xlim()
         x = np.linspace(xmin, xmax)
-        d = nb.pmf(size, r, p)
+        d = nb.pmf(x, r, p)
         plt.plot(x, d)
         plt.savefig("distribution_size-{}.png".format(size))
         plt.clf()
