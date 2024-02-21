@@ -28,17 +28,23 @@ def main():
         bins = np.concatenate(bins)
         r, p = nb_parameters(bins)
         print("NB parameters for {} bin size are r: {} and p: {}".format(size,r,p))
+        
+        with open("bp_coverage_per_bin-size_{}.txt", 'w') as o:
+            for bin in bins:
+                o.write(str(bin)+"\n")
 
         counts = Counter(bins)
         labels, values = zip(*counts.items())
         indexes = np.arange(len(labels))
         plt.clf()
         plt.title("Coverage frequency for {}bp bins".format(size))
-        plt.bar(indexes, values)
+        plt.bar(indexes, values, width=10*size)
 
         xmin, xmax = plt.xlim()
         x = np.linspace(xmin, xmax)
-        d = nb.pmf(x, r, p)
+        d = nb.logpmf(x, r, p)
+        d -= np.max(d)
+        d = np.exp(d)
         plt.plot(x, d)
         plt.savefig("distribution_size-{}.png".format(size))
         plt.clf()
