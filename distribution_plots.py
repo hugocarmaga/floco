@@ -26,7 +26,7 @@ def main():
             for (bin_size, cov_bins) in nodes[node].bins:
                 bins.append(cov_bins)
         bins = np.concatenate(bins)
-        r, p = nb_parameters(bins)
+        r, p = nb_parameters(bins, size)
         print("NB parameters for {} bin size are r: {} and p: {}".format(size,r,p))
         
         with open("bp_coverage_per_bin-size_{}.txt".format(size), 'w') as o:
