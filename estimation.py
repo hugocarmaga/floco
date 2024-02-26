@@ -337,7 +337,7 @@ def calculate_avg_cov(nodes, total_bp_matches, ploidy):
     return avg_cov
 
 
-def bin_nodes(nodes, bin_size):
+def bin_nodes(nodes, bin_sizes: list):
     '''Function to select nodes to bin and iniate the bin coverages'''
     #N_BIGGEST_NODES = 100  # A fixed number of nodes to bin
     '''BINNING_LEN = 3000000
@@ -350,19 +350,17 @@ def bin_nodes(nodes, bin_size):
     sorted_nodes = [k for k in sorted(nodes.values(), reverse=True)]'''
     nodes_to_bin = list()
     for node in nodes:
-        if nodes[node].clipped_len() >= bin_size:
-            #break
-        #else:
+        if nodes[node].clipped_len() >= min(bin_sizes):
             nodes_to_bin.append(nodes[node].name)
-            #sum_len += node.clipped_len()
     
     #bin_sizes = [size for size in range(bin_sizes[0], bin_sizes[1]+1, bin_sizes[2])]
     for node in nodes_to_bin:
         # For each node, create a list of tuples with (bin size, array with the size of the nr of bins)
         nodes[node].bins = list()
-        nr_bins = nodes[node].clipped_len() // bin_size
-        if nr_bins > 0:
-            nodes[node].bins.append((bin_size,np.zeros(nr_bins, dtype=np.uint64)))
+        for size in bin_sizes:
+            nr_bins = nodes[node].clipped_len() // size
+            if nr_bins > 0:
+                nodes[node].bins.append((size,np.zeros(nr_bins, dtype=np.uint64)))
 
     return nodes_to_bin
                 
@@ -483,7 +481,7 @@ def nb_parameters(bins, sel_size = 100):#, bins2):
     params_max = None
     ll_max = 1e30
     g_start = perf_counter()
-    sol = optimize.minimize(MLE_NBinom, np.append([r_1, p_1], cs), bounds=((1,100),(0,1),) + ((0,1),)*N_CN, method='Nelder-Mead', options=dict(maxiter=200))
+    sol = optimize.minimize(MLE_NBinom, np.append([r_1, p_1], cs), bounds=((1,100),(0,1),) + ((0,1),)*N_CN, method='Nelder-Mead', options=dict(maxiter=10))
 
     r,p = sol.x[:2]
 
