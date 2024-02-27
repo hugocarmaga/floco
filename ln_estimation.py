@@ -72,7 +72,7 @@ def compute_bins_array(bins_node):
     size = 100
     bins_to_add = list(bins_node.values())
     for _ in range(N_POINTS):
-        bins_array[size] = np.array(bins_to_add)
+        bins_array[size] = bins_to_add
         size_bins = []
         for node in bins_to_add:
             stop = len(node) if len(node) % 2 == 0 else len(node) - 1
