@@ -4,6 +4,7 @@ from flow_ilp import ilp
 import numpy as np
 import sys
 from datetime import datetime
+from ln_estimation import clip_ovlps, bin_nodes100, filter_100bins, compute_bins_array, output_bins, read_len_distr, output_edge_supp
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -115,5 +116,18 @@ def main():
     write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_solutionmetrics(concordance, r, p, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
 
+def main_bins():
+    args = parse_arguments()
+    nodes, edges = read_graph(args.graph)
+    clip_ovlps(nodes, edges)
+    nodes_to_bin = bin_nodes100(nodes, 100)
+    coverages, read_length = calculate_covs(args.graphalignment, nodes, edges)
+    filtered_bins = filter_100bins(nodes, nodes_to_bin, 100)
+    bins_array = compute_bins_array(filtered_bins)
+    output_bins(bins_array, "cov-per-bin.csv")
+    read_len_distr(read_length, "readlen-distribution.csv")
+    output_edge_supp(edges, "edge-support-per-len.csv")
+
 if __name__ == "__main__":
-    main()
+    #main()
+    main_bins()

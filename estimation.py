@@ -201,6 +201,8 @@ def calculate_covs(alignment_fname, nodes, edges):
     #total_bp_matches = 0
     #read_depth = {key:0 for key in nodes if nodes[key].clipped_len() < 101}
 
+    read_length = []
+
     nr_align = 0
     #a_start = perf_counter()
     # We read the GAF file, and count the aligned bp per each node of each alignment 
@@ -209,6 +211,7 @@ def calculate_covs(alignment_fname, nodes, edges):
             nr_align += 1
             columns = line.split("\t")
             
+            read_length.append(int(columns[1]))
             # Start and end positions (relative to the path)
             start_pos = int(columns[7])
             end_pos = int(columns[8])
@@ -326,7 +329,7 @@ def calculate_covs(alignment_fname, nodes, edges):
     #a_stop = perf_counter()
     #print("Read {} alignments in {}s".format(nr_align,a_stop-a_start), file=sys.stderr)
 
-    return coverages #, total_bp_matches, read_depth
+    return coverages, read_length #, total_bp_matches, read_depth
 
 
 def calculate_avg_cov(nodes, total_bp_matches, ploidy):
