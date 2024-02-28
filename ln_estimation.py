@@ -85,7 +85,7 @@ def compute_bins_array(bins_node):
         bins_to_add = size_bins
         size *= 2
     
-    bins_array = {n: bins[bins < 3 * median(bins)] for n, bins in bins_array.items()}
+    bins_array = {n: [[val for val in node if val < 3 * median(node)] for node in bins] for n, bins in bins_array.items()}
 
     return bins_array
 
