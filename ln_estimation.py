@@ -1,6 +1,7 @@
 from sklearn.linear_model import LinearRegression
 from collections import defaultdict, Counter
 import numpy as np
+from statistics import median
 
 def clip_ovlps(nodes,edges):
     '''This function removes all of the overlapping sequencing'''
@@ -84,7 +85,7 @@ def compute_bins_array(bins_node):
         bins_to_add = size_bins
         size *= 2
     
-    bins_array = {n: bins[bins < 3 * np.median(bins)] for n, bins in bins_array.items()}
+    bins_array = {n: bins[bins < 3 * median(bins)] for n, bins in bins_array.items()}
 
     return bins_array
 
