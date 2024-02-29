@@ -122,12 +122,12 @@ def main_bins():
     clip_ovlps(nodes, edges)
     nodes_to_bin = bin_nodes100(nodes, 100)
     coverages, read_length = calculate_covs(args.graphalignment, nodes, edges)
+    output_edge_supp(edges, "edge-support-per-len.csv")
+    read_len_distr(read_length, "readlen-distribution.csv")
     filtered_bins = filter_100bins(nodes, nodes_to_bin, 100)
     bins_array = compute_bins_array(filtered_bins)
     output_bins(bins_array, "cov-per-bin.csv")
-    read_len_distr(read_length, "readlen-distribution.csv")
-    output_edge_supp(edges, "edge-support-per-len.csv")
-
+    
 if __name__ == "__main__":
     #main()
     main_bins()

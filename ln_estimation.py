@@ -67,7 +67,7 @@ def filter_100bins(nodes, nodes_to_bin, sel_size):
     
     return bins_node
 
-def compute_bins_array(bins_node):
+""" def compute_bins_array(bins_node):
     N_POINTS = 13
     bins_array = defaultdict()
     size = 100
@@ -87,16 +87,42 @@ def compute_bins_array(bins_node):
     
     bins_array = {n: [[val for val in node if val < 3 * median(node)] for node in bins] for n, bins in bins_array.items()}
 
+    return bins_array """
+
+def compute_bins_array(bins_node):
+    N_POINTS = 13
+    bins_array = [[] for _ in range(N_POINTS)]
+    for node_bins in bins_node.values():
+        prev_start = len(bins_array[0])
+        bins_array[0].extend(node_bins)
+
+        for i in range(1, N_POINTS):
+            prev_arr = bins_array[i - 1]
+            curr_arr = bins_array[i]
+            curr_start = len(curr_arr)
+
+            prev_len = len(prev_arr)
+            prev_stop = prev_len - (prev_len - prev_start) % 2
+            if prev_start == prev_stop:
+                break
+
+            for j in range(prev_start, prev_stop, 2):
+                curr_arr.append(prev_arr[j] + prev_arr[j + 1])
+
+            bins_array[i] = curr_arr
+            prev_start = curr_start
+
     return bins_array
+
 
 def output_bins(bins_array, out):
     with open(out, 'w') as o:
-        for k,v in bins_array.items():
-            o.write("##Bin size {}bp has {} nodes and {} bins\n".format(k, v.shape[0], v.size))
         o.write("#Bin_size,Coverage\n")
-        for size in bins_array:
-            for bin in np.concatenate(bins_array[size]):
+        size=100
+        for arr in bins_array:
+            for bin in arr:
                 o.write("{},{}\n".format(size,bin))
+            size *= 2
 
 def read_len_distr(read_length, out):
     distr = Counter(read_length)
