@@ -108,8 +108,6 @@ def compute_bins_array(bins_node):
 
             for j in range(prev_start, prev_stop, 2):
                 curr_arr.append(prev_arr[j] + prev_arr[j + 1])
-
-            bins_array[i] = curr_arr
             prev_start = curr_start
 
     return bins_array
