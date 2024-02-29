@@ -90,7 +90,7 @@ def filter_100bins(nodes, nodes_to_bin, sel_size):
     return bins_array """
 
 def compute_bins_array(bins_node):
-    N_POINTS = 13
+    N_POINTS = 14
     bins_array = [[] for _ in range(N_POINTS)]
     for node_bins in bins_node.values():
         prev_start = len(bins_array[0])
