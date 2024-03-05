@@ -1,5 +1,5 @@
 import argparse
-from estimation import calculate_covs, read_graph, clip_nodes, bin_nodes, filter_bins, nb_parameters
+from estimation import calculate_covs, read_graph, clip_nodes, bin_nodes, filter_bins, compute_bins_array, alpha_and_beta
 from flow_ilp import ilp
 import numpy as np
 import sys
@@ -99,18 +99,17 @@ def main():
     if args.graphalignment:
         nodes, edges = read_graph(args.graph)
         clip_nodes(nodes, edges)
-        nodes_to_bin = bin_nodes(nodes, [args.bin_size])
+        nodes_to_bin = bin_nodes(nodes, args.bin_size)
         coverages = calculate_covs(args.graphalignment, nodes, edges)
-        filtered_bins = filter_bins(nodes, nodes_to_bin)
-        r, p = nb_parameters(filtered_bins)
-        #r = 4.371351874042581
-        #p = 0.002156213101104576
+        bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
+        bins_array = compute_bins_array(bins_node)
+        alpha, beta = alpha_and_beta(bins_array, args.bin_size)
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
-            pickle.dump((nodes,edges,coverages,r,p), f)
+            pickle.dump((nodes,edges,coverages,alpha,beta), f)
     elif args.pickle:
-        nodes,edges,coverages,r,p = pickle.load(open(args.pickle, 'rb'))
+        nodes,edges,coverages,alpha,beta = pickle.load(open(args.pickle, 'rb'))
 
-    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, r, p, args.bin_size, args.outcov, args.super_prob, args.cheap_prob, args.epsilon, args.weight)
+    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, args.outcov, args.super_prob, args.cheap_prob, args.epsilon, args.weight)
     print("Writing results to output files!")
     write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
@@ -129,5 +128,5 @@ def main_bins():
     output_bins(bins_array, "cov-per-bin.csv")
     
 if __name__ == "__main__":
-    #main()
-    main_bins()
+    main()
+    #main_bins()

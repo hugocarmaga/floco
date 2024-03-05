@@ -4,7 +4,7 @@ from math import log
 from collections import defaultdict
 import counts_to_probabs as ctp
 
-def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = -80, cheap_source = -2, epsilon = 0.3, WEIGHT = 1):
+def ilp(nodes, edges, coverages, alpha, beta, outfile, source_prob = -80, cheap_source = -2, epsilon = 0.3, WEIGHT = 1):
     '''Function to formulate and solve the ILP for the flow network problem.'''
     try:
         # Create a new model
@@ -68,15 +68,21 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
                     else:
                         free_left_side[node] = node
 
+
                 # PWL constraints for node CN probabilities
-                n = bin_size
                 m = nodes[node].clipped_len()
-                
+                n = 100
+                r_100 = (alpha * 100) ** 2 / (max(beta ** 2 * 100 **2, alpha * 100 + 1e-6) - alpha * 100)
+                p_100 = (alpha * 100) / (max(beta ** 2 * 100 **2, alpha * 100 + 1e-6))
+
+                # Compute mean and variance for the node, using its length
+                mu = alpha * m
+                v = max(beta ** 2 * m **2, alpha * m + 1e-6)
+
                 # Check if r and p values are always within boundaries
-                if m > n * p_bin:
-                    r = (r_bin*(1-p_bin))/(1-n/m*p_bin)
-                    p = n/m * p_bin
-                    mu = r * (1-p) / p
+                if m > n * p_100:
+                    r = mu ** 2 / (v - mu)
+                    p = mu / v
                     lower_bound, y = ctp.counts_to_probs(r, p, mu, cov, 3, epsilon)
                     upper_bound = len(y)
                     x = list(range(lower_bound, upper_bound))
@@ -85,7 +91,7 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
                 
                 # If not, use poisson distribution instead:
                 else:
-                    lamb =  m / n * r_bin * (1 - p_bin) / p_bin
+                    lamb =  m / n * r_100 * (1 - p_100) / p_100
                     p = 10e-5
                     r = p / (1-p) * lamb
                     lower_bound, y = ctp.counts_to_probs(r, p, lamb, cov, 3, epsilon)
@@ -114,8 +120,8 @@ def ilp(nodes, edges, coverages, r_bin, p_bin, bin_size, outfile, source_prob = 
                 model.addConstr(sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
                 model.addConstr(sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)           
 
-        r_edge = (r_bin*(1-p_bin))/(1-bin_size*p_bin)
-        p_edge = bin_size * p_bin
+        r_edge = alpha ** 2 / ((max(beta ** 2, alpha + 1e-6)) - alpha ** 2)
+        p_edge = alpha / (max(beta ** 2, alpha + 1e-6))
         ### Objective function
         model.setObjective(sum(p_cn[node] for node in nodes) + source_prob * sum(source_left[node] + source_right[node] + sink_left[node] + sink_right[node] for node in double_sides) +
                            sum(cheap_source*source_left[node] + source_prob*source_right[node] + cheap_source*sink_left[node] + source_prob*sink_right[node] for node in free_left_side) +

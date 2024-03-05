@@ -340,30 +340,20 @@ def calculate_avg_cov(nodes, total_bp_matches, ploidy):
     return avg_cov
 
 
-def bin_nodes(nodes, bin_sizes: list):
+def bin_nodes(nodes, bin_size = 100):
     '''Function to select nodes to bin and iniate the bin coverages'''
-    #N_BIGGEST_NODES = 100  # A fixed number of nodes to bin
-    '''BINNING_LEN = 3000000
-    MIN_LEN = bin_sizes[0]
-    sum_len = 0
-    #nr_to_bin = min(len(nodes), N_BIGGEST_NODES)  # If the number of nodes is smaller than the fixed number, bin all of them
-    
-    # Get the nodes to bin, corresponding to the nr_to_bin biggest nodes.
-    #nodes_to_bin = [k.name for k in sorted(nodes.values(), reverse=True)[:nr_to_bin]]
-    sorted_nodes = [k for k in sorted(nodes.values(), reverse=True)]'''
     nodes_to_bin = list()
     for node in nodes:
-        if nodes[node].clipped_len() >= min(bin_sizes):
+        if nodes[node].clipped_len() >= bin_size:
             nodes_to_bin.append(nodes[node].name)
     
     #bin_sizes = [size for size in range(bin_sizes[0], bin_sizes[1]+1, bin_sizes[2])]
     for node in nodes_to_bin:
         # For each node, create a list of tuples with (bin size, array with the size of the nr of bins)
         nodes[node].bins = list()
-        for size in bin_sizes:
-            nr_bins = nodes[node].clipped_len() // size
-            if nr_bins > 0:
-                nodes[node].bins.append((size,np.zeros(nr_bins, dtype=np.uint64)))
+        nr_bins = nodes[node].clipped_len() // bin_size
+        if nr_bins >= 10:
+            nodes[node].bins.append((bin_size,np.zeros(nr_bins, dtype=np.uint64)))
 
     return nodes_to_bin
                 
@@ -401,39 +391,57 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
         for (bin_size, cov_bins) in nodes[node].bins:
             if bin_size == sel_size:
                 # Keep only nodes with 10 bins or more and with at least one bin with a coverage bigger than the bin size
-                if cov_bins[cov_bins >= sel_size].size > 0 and cov_bins.size >= 10:
+                if cov_bins[cov_bins >= sel_size].size:
                     bp_cov_per_node[node] = cov_bins
                     mean_per_node[node] = np.mean(cov_bins)   # Compute the mean bin coverage per node
     
     # Remove top and bottom 3% of nodes, based on the mean bin coverage. Then, remove bins with coverage bigger or equal to 3 times the median bin coverage of the node.
     TOP_PERC = 3
     thresh = np.quantile(np.array(list(mean_per_node.values())), [TOP_PERC/100, (100 - TOP_PERC)/100])
-    binned_nodes = {node: bins[bins < 3 * np.median(bins)] for node,bins in bp_cov_per_node.items() if thresh[0] <= np.mean(bins) <= thresh[1]}
-
-    # Merge all kept bins in the same array
-    filtered_bins = np.concatenate(list(binned_nodes.values()))
+    bins_node = {node: bins for node,bins in bp_cov_per_node.items() if thresh[0] <= np.mean(bins) <= thresh[1]}
     
-    return filtered_bins
+    return bins_node
 
+def compute_bins_array(bins_node):
+    N_POINTS = 7
+    bins_array = [[] for _ in range(N_POINTS)]
+    for node_bins in bins_node.values():
+        prev_start = len(bins_array[0])
+        bins_array[0].extend(node_bins)
 
+        for i in range(1, N_POINTS):
+            prev_arr = bins_array[i - 1]
+            curr_arr = bins_array[i]
+            curr_start = len(curr_arr)
 
-def nb_parameters(bins, sel_size = 100):#, bins2):
-    '''Function to estimate the parameters of the Negative Binomial distribution.'''
+            prev_len = len(prev_arr)
+            prev_stop = prev_len - (prev_len - prev_start) % 2
+            if prev_start == prev_stop:
+                break
+
+            for j in range(prev_start, prev_stop, 2):
+                curr_arr.append(prev_arr[j] + prev_arr[j + 1])
+            prev_start = curr_start
+
+    return bins_array
+
+def estimate_mean_std(counts, bp_step, ROUND_BINS):
+    '''Function to estimate mean and standard deviation per bin size.'''
 
     def MLE_NBinom(parameters):
         # Changing parameters
-        r, p = parameters[:2]
+        m, sd = parameters[:2]
 
-        # Check if mean is within 20% distance from the initial value
-        m = r * (1-p) / p
-        if m > k_max*1.2 or m < k_max*0.8:
-            return 1e30
+        sd = max(sqrt(m)*1.0001, sd)
+        r = m**2 / (sd**2 - m)
+        p = m / sd**2
+
         
         s = sum(parameters[2:])
         cs = np.log(parameters[2:]/s)
         rs = np.maximum(np.arange(N_CN), 0.01) * r
         
-        sum_dist = [count * special.logsumexp(cs + stats.nbinom.logpmf(i, rs, p)) for i, count in enumerate(counts_nozero)]
+        sum_dist = [count * special.logsumexp(cs + stats.nbinom.logpmf((i + 1/2)*bp_step, rs, p)) for i, count in enumerate(counts)]
 
         LL = min(1e30, -np.sum(sum_dist))
 
@@ -445,60 +453,88 @@ def nb_parameters(bins, sel_size = 100):#, bins2):
             params_max = tuple(parameters)
         
         return LL
-
-    # Add noise to the bins, to flatten the curve, instead of having peaks
-    noise_bins = bins + stats.randint.rvs(-sel_size, 2*sel_size, size=len(bins))
-    # Transform the bins into frequency counts for all nodes. Turn that into an array of length (max coverage + 1)
-    counts = Counter(noise_bins)
-    counts_array = np.array([counts[i] for i in range(0,int(max(counts.keys()))+1)])
-    counts_nozero = counts_array[counts_array > 0]
-
+    
     # Iterate over the array and get the coverage value with the highest frequency (including some padding)
     s_max = 0
     k_max = 0
-    WINDOW = 50
-    for i in range(counts_array.size):
-        s = sum(counts_array[i-WINDOW:i+WINDOW+1]) + sum(counts_array[max(2*i-WINDOW,i+WINDOW+1):2*i+WINDOW+1])
+    cum_sum = np.cumsum(counts)
+    n = counts.size - 1
+    WINDOW = ROUND_BINS // 2
+    for i in range(WINDOW, counts.size - WINDOW):
+        start1 = i - WINDOW - 1
+        end1 = i + WINDOW
+        start2 = max(2*i-WINDOW-1,i+WINDOW)
+        end2 = 2*i+WINDOW
+        
+        s = cum_sum[min(end2, n)] - cum_sum[np.clip(start2, end1, n)] + cum_sum[min(end1, n)] - cum_sum[start1]
         if s > s_max:
             s_max = s
             k_max = i
-    
+
     # Create a vector of coefficients for each copy number (up to copy number N_CN-1)
-    N_CN = 7
+    N_CN = 4
     cs = []
     for j in range(N_CN):
-        cs.append(sum(counts_array[int((j-1/2)*k_max):int((j+1/2)*k_max)+1]))
-        # cs.append(0)
-        # for i in range((j-1/2)*k_max, (j+1/2)*k_max+1):
-        #     cs[j] += counts_array[i]
-    
+        cs.append(sum(counts[int((j-1/2)*k_max):int((j+1/2)*k_max)+1]))
+
     cs = np.array(cs)
     # Normalize the vector, dividing it by the total sum of coefficients
     cs = cs / np.sum(cs)
 
-    # Get initial values of r and p
-    sd = k_max/4
-    r_1 = k_max**2 / (sd**2 - k_max)
-    p_1 = k_max/sd**2
-
+    # Get initial values of m and sd
+    m0 = (k_max + 0.5) * bp_step
+    sd = m0/2
+    
     params_max = None
     ll_max = 1e30
-    g_start = perf_counter()
-    sol = optimize.minimize(MLE_NBinom, np.append([r_1, p_1], cs), bounds=((1,100),(0,1),) + ((0,1),)*N_CN, method='Nelder-Mead', options=dict(maxiter=10))
 
-    r,p = sol.x[:2]
+    sol = optimize.minimize(MLE_NBinom, np.append([m0, sd], cs), bounds=((m0 * 0.8, m0 * 1.2), (m0 * 0.1, m0 * 10),) + tuple((c*0.5, c*1.5+1e-5) for c in cs), method='Nelder-Mead')
+    
+    m, sd = sol.x[:2]
+    
+    return m, sd
 
-    g_stop = perf_counter()
-    print("Parameters estimated in {}s".format(g_stop-g_start), file=sys.stderr)
-    print("Optimization message: {}".format(sol.message), file=sys.stderr)
-    print("Value of objective function: {}".format(sol.fun), file=sys.stderr)
-    print("Value of computed LL max: {}".format(ll_max), file=sys.stderr)
-    print("List of parameters for LL max: {}".format(params_max), file=sys.stderr)
+def alpha_and_beta(bins_array, sel_size = 100):
+    '''Get alpha and beta coefficients for NB parameters estimation.'''
 
-    print(sol.x)
+    # Create dictionary of bins per size
+    cov = defaultdict(list)
+    for arr in bins_array:
+        cov[sel_size] + arr
+        sel_size *= 2
+    
+    params = defaultdict()
+    TOP_PERC = 3
+    ROUND_BINS = 4
 
-    return r,p
+    # Iterate over all bin sizes
+    for size in cov:
+        bins = np.array(cov[size])
+        sys.stderr.write(f"Starting bin {size}: {len(bins)}\n")
 
+        # Filter bins by quantile
+        thresh = np.quantile(bins, [TOP_PERC/100, (100 - TOP_PERC)/100])
+        bins = bins[(thresh[0] <= bins) & (bins <= thresh[1])]
+
+        # Use a step to round and generate counts for rounded coverages
+        bp_step = size // ROUND_BINS
+        counts = np.bincount(np.round(bins / bp_step).astype(dtype=np.int64), minlength=int(round(thresh[1])) // bp_step + 1)
+        sys.stderr.write(f"{len(counts)} counts\n")
+
+        # Get mean and standard deviation from MLE
+        mean, sd = estimate_mean_std(counts, bp_step, ROUND_BINS)
+
+        # Add them to a dictionary
+        params[size] = [mean, sd]
+
+    sizes, vals = zip(*params.items())
+    means, sds = zip(*vals)
+
+    # Compute alpha and beta coefficients from linear regression
+    alpha = stats.linregress(sizes,means).slope
+    beta = stats.linregress(sizes,sds).slope
+
+    return alpha, beta
 
 def node_covs(nodes, alignment, ploidy, p, r_smaller, smallest_size, outfile):
     '''Function to write the file with the node coverages.'''
