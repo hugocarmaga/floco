@@ -500,7 +500,7 @@ def alpha_and_beta(bins_array, sel_size = 100):
     # Create dictionary of bins per size
     cov = defaultdict(list)
     for arr in bins_array:
-        cov[sel_size] + arr
+        cov[sel_size] += arr
         sel_size *= 2
     
     params = defaultdict()
