@@ -204,7 +204,7 @@ def calculate_covs(alignment_fname, nodes, edges):
     read_length = []
 
     nr_align = 0
-    #a_start = perf_counter()
+    a_start = perf_counter()
     # We read the GAF file, and count the aligned bp per each node of each alignment 
     with open(alignment_fname,"r") as alignment_file:
         for line in alignment_file:
@@ -326,23 +326,24 @@ def calculate_covs(alignment_fname, nodes, edges):
                             if node_end <= nodes[aln_nodes[-1][0]].middle_point():
                                 read_depth[aln_nodes[-1][0]] += 1'''
 
-    #a_stop = perf_counter()
-    #print("Read {} alignments in {}s".format(nr_align,a_stop-a_start), file=sys.stderr)
+    a_stop = perf_counter()
+    print("Read {} alignments in {}s".format(nr_align,a_stop-a_start), file=sys.stderr)
 
     return coverages, read_length #, total_bp_matches, read_depth
 
 
-def calculate_avg_cov(nodes, total_bp_matches, ploidy):
-    total_length=0
-    for node in nodes:
-        total_length += nodes[node].clipped_len()
-    avg_cov = total_bp_matches / (total_length*ploidy)
-    return avg_cov
+# def calculate_avg_cov(nodes, total_bp_matches, ploidy):
+#     total_length=0
+#     for node in nodes:
+#         total_length += nodes[node].clipped_len()
+#     avg_cov = total_bp_matches / (total_length*ploidy)
+#     return avg_cov
 
 
 def bin_nodes(nodes, bin_size = 100):
     '''Function to select nodes to bin and iniate the bin coverages'''
     nodes_to_bin = list()
+    b_start = perf_counter()
     for node in nodes:
         if nodes[node].clipped_len() >= bin_size:
             nodes_to_bin.append(nodes[node].name)
@@ -354,6 +355,9 @@ def bin_nodes(nodes, bin_size = 100):
         nr_bins = nodes[node].clipped_len() // bin_size
         if nr_bins >= 10:
             nodes[node].bins.append((bin_size,np.zeros(nr_bins, dtype=np.uint64)))
+
+    b_stop = perf_counter()
+    print("Nodes binned in {}s".format(b_stop-b_start), file=sys.stderr)
 
     return nodes_to_bin
                 
@@ -382,7 +386,7 @@ def update_bins(node, start, end):
 
 def filter_bins(nodes, nodes_to_bin, sel_size = 100):
     '''Funtion to replace the clustering step'''
-
+    f_start = perf_counter()
     bp_cov_per_node = defaultdict()  # Dictionary to save the bins that pass the filtering criteria
     mean_per_node = defaultdict()  # Dictionary to save the average bin coverage for all the binned nodes
 
@@ -399,10 +403,14 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
     TOP_PERC = 3
     thresh = np.quantile(np.array(list(mean_per_node.values())), [TOP_PERC/100, (100 - TOP_PERC)/100])
     bins_node = {node: bins for node,bins in bp_cov_per_node.items() if thresh[0] <= np.mean(bins) <= thresh[1]}
+
+    f_stop = perf_counter()
+    print("Bins filtered in {}s".format(f_stop-f_start), file=sys.stderr)
     
     return bins_node
 
 def compute_bins_array(bins_node):
+    b_start = perf_counter()
     N_POINTS = 7
     bins_array = [[] for _ in range(N_POINTS)]
     for node_bins in bins_node.values():
@@ -422,6 +430,9 @@ def compute_bins_array(bins_node):
             for j in range(prev_start, prev_stop, 2):
                 curr_arr.append(prev_arr[j] + prev_arr[j + 1])
             prev_start = curr_start
+
+    b_stop = perf_counter()
+    print("Bins array computed in {}s".format(b_stop-b_start), file=sys.stderr)
 
     return bins_array
 
@@ -496,7 +507,8 @@ def estimate_mean_std(counts, bp_step, ROUND_BINS):
 
 def alpha_and_beta(bins_array, sel_size = 100):
     '''Get alpha and beta coefficients for NB parameters estimation.'''
-
+    
+    p_start = perf_counter()
     # Create dictionary of bins per size
     cov = defaultdict(list)
     for arr in bins_array:
@@ -534,32 +546,35 @@ def alpha_and_beta(bins_array, sel_size = 100):
     alpha = stats.linregress(sizes,means).slope
     beta = stats.linregress(sizes,sds).slope
 
+    p_stop = perf_counter()
+    print("Alpha and beta estimated in {}s".format(p_stop-p_start), file=sys.stderr)
+
     return alpha, beta
 
-def node_covs(nodes, alignment, ploidy, p, r_smaller, smallest_size, outfile):
-    '''Function to write the file with the node coverages.'''
+# def node_covs(nodes, alignment, ploidy, p, r_smaller, smallest_size, outfile):
+#     '''Function to write the file with the node coverages.'''
 
-    coverages, total_bp_matches = calculate_covs(alignment, nodes)
-    print("Calculated", len(coverages), "coverages")
+#     coverages, total_bp_matches = calculate_covs(alignment, nodes)
+#     print("Calculated", len(coverages), "coverages")
 
-    avg_cov = calculate_avg_cov(nodes, total_bp_matches, ploidy)
-    print("Average coverage:", avg_cov)
+#     avg_cov = calculate_avg_cov(nodes, total_bp_matches, ploidy)
+#     print("Average coverage:", avg_cov)
 
-    print("Writing results into", outfile)
-    write_results(coverages.items(), avg_cov, p, r_smaller, smallest_size, outfile)
+#     print("Writing results into", outfile)
+#     write_results(coverages.items(), avg_cov, p, r_smaller, smallest_size, outfile)
 
-def write_separate_results(coverages, nodes, nodes_to_bin, out_fname):
-    with open("cov-with-size_" + out_fname,"w") as out :
-        out.write("Node,Size,Coverage\n")
-        for node in coverages:
-            out.write(node + "," + str(nodes[node].clipped_len()) + "," + str(coverages[node]) + "\n")
+# def write_separate_results(coverages, nodes, nodes_to_bin, out_fname):
+#     with open("cov-with-size_" + out_fname,"w") as out :
+#         out.write("Node,Size,Coverage\n")
+#         for node in coverages:
+#             out.write(node + "," + str(nodes[node].clipped_len()) + "," + str(coverages[node]) + "\n")
     
-    with open("cov-per-bin_" + out_fname,"w") as out_bin :
-        out_bin.write("Bin_size,Coverage\n")
-        for node in nodes_to_bin:
-            for bins in nodes[node].bins:
-                for each in bins[1]:
-                    out_bin.write(str(bins[0]) + "," + str(each) + "\n")
+#     with open("cov-per-bin_" + out_fname,"w") as out_bin :
+#         out_bin.write("Bin_size,Coverage\n")
+#         for node in nodes_to_bin:
+#             for bins in nodes[node].bins:
+#                 for each in bins[1]:
+#                     out_bin.write(str(bins[0]) + "," + str(each) + "\n")
     
 
 def main():

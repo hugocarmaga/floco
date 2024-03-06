@@ -3,10 +3,13 @@ from gurobipy import GRB
 from math import log
 from collections import defaultdict
 import counts_to_probabs as ctp
+from time import perf_counter
+import sys
 
 def ilp(nodes, edges, coverages, alpha, beta, outfile, source_prob = -80, cheap_source = -2, epsilon = 0.3, WEIGHT = 1):
     '''Function to formulate and solve the ILP for the flow network problem.'''
     try:
+        i_start = perf_counter()
         # Create a new model
         model = gp.Model("CN flow ILP")
 
@@ -128,13 +131,20 @@ def ilp(nodes, edges, coverages, alpha, beta, outfile, source_prob = -80, cheap_
                            sum(source_prob*source_left[node] + cheap_source*source_right[node] + source_prob*sink_left[node] + cheap_source*sink_right[node] for node in free_right_side) +
                            WEIGHT * sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(r_edge, p_edge, edges[e].sup_reads)) for e in edges), GRB.MAXIMIZE)
 
+
+
         ### Optimize model
-        print("Optimizing now!")
         model.update()
         model.write("model_{}-super_{}-cheap_{}.lp".format(outfile, source_prob, cheap_source))
-        model.optimize()
+        i_stop = perf_counter()
+        print("ILP model generated and saved in {}s".format(i_stop-i_start), file=sys.stderr)
 
-        print("Optimization finished!")
+        #print("Optimizing now!")
+        o_start = perf_counter()
+        model.optimize()
+        o_stop = perf_counter()
+        print("ILP optimization in {}s".format(o_stop-o_start), file=sys.stderr)
+        #print("Optimization finished!")
 
         ### Collect results
         all_results = [["Source_prob", source_prob], ["Objective_Value", model.objVal], ["Runtime",model.Runtime] ]
