@@ -522,7 +522,7 @@ def alpha_and_beta(bins_array, sel_size = 100):
     # Iterate over all bin sizes
     for size in cov:
         bins = np.array(cov[size])
-        sys.stderr.write(f"Starting bin {size}: {len(bins)}\n")
+        #sys.stderr.write(f"Starting bin {size}: {len(bins)}\n")
 
         # Filter bins by quantile
         thresh = np.quantile(bins, [TOP_PERC/100, (100 - TOP_PERC)/100])
@@ -545,6 +545,9 @@ def alpha_and_beta(bins_array, sel_size = 100):
     # Compute alpha and beta coefficients from linear regression
     alpha = stats.linregress(sizes,means).slope
     beta = stats.linregress(sizes,sds).slope
+
+    print(f"Alpha value: {alpha}\n")
+    print(f"Beta value: {beta}\n")
 
     p_stop = perf_counter()
     print("Alpha and beta estimated in {}s".format(p_stop-p_start), file=sys.stderr)
