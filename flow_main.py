@@ -77,7 +77,7 @@ def write_ilpresults(all_results, out_fname):
         for parts in all_results:
             out.write(",".join([str(p) for p in parts])+"\n")
 
-def write_solutionmetrics(concordance, r, p, nodes, out_fname):
+def write_solutionmetrics(concordance, alpha, beta, nodes, out_fname):
     discordant_nodes = sum(1 for v in concordance.values() if (len(v)==5 and v[4] != 0))
     covered_nodes = sum(1 for v in concordance.values() if v[0] >= 0)
     discordant_clipped_bp = sum(nodes[node].clipped_len() for node in concordance if concordance[node][0] >= 0 and concordance[node][4] != 0)
@@ -86,8 +86,8 @@ def write_solutionmetrics(concordance, r, p, nodes, out_fname):
         out.write("##Total number of nodes with positive length: {}\n".format(covered_nodes))
         out.write("##Number of nodes with discordant copy numbers (%): {}({})\n".format(discordant_nodes, round(discordant_nodes/covered_nodes*100,2)))
         out.write("##Number of (clipped) bp with discordant copy numbers (%): {}({})\n".format(discordant_clipped_bp, round(discordant_clipped_bp/full_length*100,2)))
-        out.write("##Negative Binomial parameter r: {}\n".format(r))
-        out.write("##Negative Binomial parameter p: {}\n".format(p))
+        out.write("##Coefficient value Alpha: {}\n".format(alpha))
+        out.write("##Coefficient value Beta: {}\n".format(beta))
         out.write("#Node,Coverage,Length,Predicted_CN,Likeliest_CN,CN_difference\n")
         for node in concordance:
             out.write("{},{}\n".format(node, ",".join([str(stat) for stat in concordance[node]])))
@@ -113,7 +113,7 @@ def main():
     print("Writing results to output files!")
     write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
-    write_solutionmetrics(concordance, r, p, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
+    write_solutionmetrics(concordance, alpha, beta, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
 
 def main_bins():
     args = parse_arguments()
