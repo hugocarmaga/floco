@@ -88,7 +88,7 @@ def ilp(nodes, edges, coverages, alpha, beta, outfile, source_prob = -80, cheap_
                     p = mu / v
                     if node == "utig4-3":
                         print("NB parameters for node utig4-3 are r {} and p {}".format(r, p), file=sys.stderr)
-                        print(coverages[node])
+                        print(nodes[node].bins)
                     lower_bound, y = ctp.counts_to_probs(r, p, mu, cov, 3, epsilon)
                     upper_bound = len(y)
                     x = list(range(lower_bound, upper_bound))
