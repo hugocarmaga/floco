@@ -74,37 +74,18 @@ def ilp(nodes, edges, coverages, alpha, beta, outfile, source_prob = -80, cheap_
 
                 # PWL constraints for node CN probabilities
                 m = nodes[node].clipped_len()
-                n = 100
-                r_100 = (alpha * 100) ** 2 / (max(beta ** 2 * 100 **2, alpha * 100 + 1e-6) - alpha * 100)
-                p_100 = (alpha * 100) / (max(beta ** 2 * 100 **2, alpha * 100 + 1e-6))
 
                 # Compute mean and variance for the node, using its length
                 mu = alpha * m
-                v = max(beta ** 2 * m **2, alpha * m + 1e-6)
+                v = max((beta * m) ** 2, mu + 1e-6)
 
-                # Check if r and p values are always within boundaries
-                if m > n * p_100:
-                    r = mu ** 2 / (v - mu)
-                    p = mu / v
-                    if node == "utig4-3":
-                        print("NB parameters for node utig4-3 are r {} and p {}".format(r, p), file=sys.stderr)
-                        print(nodes[node].bins)
-                    lower_bound, y = ctp.counts_to_probs(r, p, mu, cov, 3, epsilon)
-                    upper_bound = len(y)
-                    x = list(range(lower_bound, upper_bound))
-                    y = y[lower_bound:]
-                    assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
-                
-                # If not, use poisson distribution instead:
-                else:
-                    lamb =  m / n * r_100 * (1 - p_100) / p_100
-                    p = 10e-5
-                    r = p / (1-p) * lamb
-                    lower_bound, y = ctp.counts_to_probs(r, p, lamb, cov, 3, epsilon)
-                    upper_bound = len(y)
-                    x = list(range(lower_bound, upper_bound))
-                    y = y[lower_bound:]
-                    assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
+                r = mu ** 2 / (v - mu)
+                p = mu / v
+                lower_bound, y = ctp.counts_to_probs(r, p, mu, cov, 3, epsilon)
+                upper_bound = len(y)
+                x = list(range(lower_bound, upper_bound))
+                y = y[lower_bound:]
+                assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
                      
                 concordance[node] = [x[y.index(max(y))]]
 

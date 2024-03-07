@@ -385,7 +385,7 @@ def update_bins(node, start, end):
 
 
 def filter_bins(nodes, nodes_to_bin, sel_size = 100):
-    '''Funtion to replace the clustering step'''
+    '''Funtion to filter bins by quality'''
     f_start = perf_counter()
     bp_cov_per_node = defaultdict()  # Dictionary to save the bins that pass the filtering criteria
     mean_per_node = defaultdict()  # Dictionary to save the average bin coverage for all the binned nodes
