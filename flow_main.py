@@ -4,7 +4,7 @@ from flow_ilp import ilp
 import numpy as np
 import sys
 from datetime import datetime
-from ln_estimation import clip_ovlps, bin_nodes100, filter_100bins, compute_bins_array, output_bins, read_len_distr, output_edge_supp
+#from ln_estimation import clip_ovlps, bin_nodes100, filter_100bins, compute_bins_array, output_bins, read_len_distr, output_edge_supp
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
