@@ -115,7 +115,7 @@ def main():
     write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_solutionmetrics(concordance, alpha, beta, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     with open("dump-estimation_debug-{}.tmp.pkl".format(args.outcov), 'wb') as f:  #############################################################################
-        pickle.dump((nodes,edges,coverages,alpha,beta,params,nb_per_size), f)
+        pickle.dump((nodes,edges,coverages,bins_array,alpha,beta,params,nb_per_size), f)
 
 def main_bins():
     args = parse_arguments()
