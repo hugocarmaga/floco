@@ -103,17 +103,19 @@ def main():
         coverages = calculate_covs(args.graphalignment, nodes, edges)
         bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
         bins_array = compute_bins_array(bins_node)
-        alpha, beta = alpha_and_beta(bins_array, args.bin_size)
-        with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
-            pickle.dump((nodes,edges,coverages,alpha,beta), f)
+        alpha, beta, params = alpha_and_beta(bins_array, args.bin_size)  #####################################################################################
+        #with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
+            #pickle.dump((nodes,edges,coverages,alpha,beta,params), f)    #####################################################################################
     elif args.pickle:
         nodes,edges,coverages,alpha,beta = pickle.load(open(args.pickle, 'rb'))
 
-    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, args.outcov, args.super_prob, args.cheap_prob, args.epsilon, args.weight)
+    copy_numbers, all_results, concordance, nb_per_size = ilp(nodes, edges, coverages, alpha, beta, args.outcov, args.super_prob, args.cheap_prob, args.epsilon, args.weight)
     print("Writing results to output files!")
     write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_solutionmetrics(concordance, alpha, beta, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
+    with open("dump-estimation_debug-{}.tmp.pkl".format(args.outcov), 'wb') as f:  #############################################################################
+        pickle.dump((nodes,edges,coverages,alpha,beta,params,nb_per_size), f)
 
 def main_bins():
     args = parse_arguments()

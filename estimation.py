@@ -411,7 +411,7 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
 
 def compute_bins_array(bins_node):
     b_start = perf_counter()
-    N_POINTS = 14
+    N_POINTS = 7
     bins_array = [[] for _ in range(N_POINTS)]
     for node_bins in bins_node.values():
         prev_start = len(bins_array[0])
@@ -552,7 +552,7 @@ def alpha_and_beta(bins_array, sel_size = 100):
     p_stop = perf_counter()
     print("Alpha and beta estimated in {}s".format(p_stop-p_start), file=sys.stderr)
 
-    return alpha, beta
+    return alpha, beta, params ###########################################################################################################
 
 # def node_covs(nodes, alignment, ploidy, p, r_smaller, smallest_size, outfile):
 #     '''Function to write the file with the node coverages.'''
