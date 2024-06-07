@@ -102,9 +102,9 @@ def main():
         bins_array = compute_bins_array(bins_node)
         alpha, beta, params = alpha_and_beta(bins_array, args.bin_size)
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
-            pickle.dump((nodes,edges,coverages,alpha,beta,params), f)
+            pickle.dump((nodes,edges,coverages,alpha,beta,params,rlen_params), f)
     elif args.pickle:
-        nodes,edges,coverages,alpha,beta,params = pickle.load(open(args.pickle, 'rb'))
+        nodes,edges,coverages,alpha,beta,params,rlen_params = pickle.load(open(args.pickle, 'rb'))
 
     copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon)
     print("Writing results to output files!")
