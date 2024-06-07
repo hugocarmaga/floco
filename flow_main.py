@@ -3,8 +3,6 @@ from estimation import calculate_covs, read_graph, clip_nodes, bin_nodes, filter
 from flow_ilp import ilp
 import numpy as np
 import sys
-from datetime import datetime
-#from ln_estimation import clip_ovlps, bin_nodes100, filter_100bins, compute_bins_array, output_bins, read_len_distr, output_edge_supp
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
@@ -38,7 +36,6 @@ def parse_arguments():
     parser.add_argument("-S", "--super_prob", type=int, default=-10, help="Probability for using the super edges when there are other edges available. (default:%(default)s)")
     parser.add_argument("-s", "--cheap_prob", type=int, default=-2, help="Probability for using the super edges when there's no other edge available. (default:%(default)s)")
     parser.add_argument("-e", "--epsilon", type=float, default=0.3, help="Epsilon value for adjusting CN0 counts to probabilities (default:%(default)s)")
-    parser.add_argument("-w", "--weight", type=float, default=1, help="Weight value for the edge coverage (default:%(default)s)")
     parser.add_argument("-b", "--bin_size", default=100, type=int, help="Set the bin size to use for the NB parameters' estimation. (default:%(default)s)")
     parser.add_argument("-d", "--pickle", type=str, help="Pickle dump with the data.", required=False)
 
@@ -103,34 +100,19 @@ def main():
         coverages, rlen_params = calculate_covs(args.graphalignment, nodes, edges)
         bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
         bins_array = compute_bins_array(bins_node)
-        alpha, beta, params = alpha_and_beta(bins_array, args.bin_size)  #####################################################################################
+        alpha, beta, params = alpha_and_beta(bins_array, args.bin_size)
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
-            pickle.dump((nodes,edges,coverages,alpha,beta,params), f)    #####################################################################################
+            pickle.dump((nodes,edges,coverages,alpha,beta,params), f)
     elif args.pickle:
         nodes,edges,coverages,alpha,beta = pickle.load(open(args.pickle, 'rb'))
 
-    copy_numbers, all_results, concordance, nb_per_size = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon, args.weight)
+    copy_numbers, all_results, concordance, nb_per_size = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon)
     print("Writing results to output files!")
     write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_solutionmetrics(concordance, alpha, beta, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
-    with open("dump-estimation_debug-{}.tmp.pkl".format(args.outcov), 'wb') as f:  #############################################################################
+    with open("dump-estimation_debug-{}.tmp.pkl".format(args.outcov), 'wb') as f:
         pickle.dump((nodes,edges,coverages,bins_array,alpha,beta,params,nb_per_size), f)
-
-'''
-def main_bins():
-    args = parse_arguments()
-    nodes, edges = read_graph(args.graph)
-    clip_ovlps(nodes, edges)
-    nodes_to_bin = bin_nodes100(nodes, 100)
-    coverages, read_length = calculate_covs(args.graphalignment, nodes, edges)
-    output_edge_supp(edges, "edge-support-per-len.csv")
-    read_len_distr(read_length, "readlen-distribution.csv")
-    filtered_bins = filter_100bins(nodes, nodes_to_bin, 100)
-    bins_array = compute_bins_array(filtered_bins)
-    output_bins(bins_array, "cov-per-bin.csv")
-    '''
 
 if __name__ == "__main__":
     main()
-    #main_bins()

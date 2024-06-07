@@ -6,7 +6,7 @@ import counts_to_probabs as ctp
 from time import perf_counter
 import sys
 
-def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob = -80, cheap_source = -2, epsilon = 0.3, WEIGHT = 1):
+def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob = -80, cheap_source = -2, epsilon = 0.3):
     '''Function to formulate and solve the ILP for the flow network problem.'''
     try:
         i_start = perf_counter()
@@ -112,7 +112,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         model.setObjective(sum(p_cn[node] for node in nodes) + source_prob * sum(source_left[node] + source_right[node] + sink_left[node] + sink_right[node] for node in double_sides) +
                            sum(cheap_source*source_left[node] + source_prob*source_right[node] + cheap_source*sink_left[node] + source_prob*sink_right[node] for node in free_left_side) +
                            sum(source_prob*source_left[node] + cheap_source*source_right[node] + source_prob*sink_left[node] + cheap_source*sink_right[node] for node in free_right_side) +
-                           WEIGHT * sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params, cheap_source)) for e in edges), GRB.MAXIMIZE)
+                           sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params, cheap_source)) for e in edges), GRB.MAXIMIZE)
 
 
 
