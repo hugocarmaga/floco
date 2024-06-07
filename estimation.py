@@ -130,63 +130,42 @@ def clip_nodes(nodes,edges):
     edge_list.sort(reverse=True)
     # Iterate over list of edges, and clip the nodes to get rid of overlaps.
     for edge in edge_list:
+        node1 = nodes[edge.node1]
+        node2 = nodes[edge.node2]
         # First, we get the clipping values for the corresponding ends of the nodes
-        clip_node1 = nodes[edge.node1].r_clipping if edge.strand1 else nodes[edge.node1].l_clipping
-        clip_node2 = nodes[edge.node2].l_clipping if edge.strand2 else nodes[edge.node2].r_clipping
+        node1_clipping = node1.r_clipping if edge.strand1 else node1.l_clipping
+        node2_clipping = node2.l_clipping if edge.strand2 else node2.r_clipping
 
-        # If both clippings are bigger than the overlap, we can continue to the next edge, as we're not clipping anything. If just one of the clippings is bigger than the overlap, we just have to clip the other node
-        if (clip_node1 and clip_node2) > edge.ovlp:
+        long_enough1 = node1_clipping >= edge.ovlp
+        long_enough2 = node2_clipping >= edge.ovlp
+        # If both clippings are bigger than the overlap, we can continue to the next edge,
+        # as we're not clipping anything.
+        if long_enough1 and long_enough2:
             continue
-        elif clip_node1 > edge.ovlp:
-            if edge.strand2:
-                assert nodes[edge.node2].l_clipping <= edge.ovlp
-                nodes[edge.node2].l_clipping = edge.ovlp
-            else:
-                assert nodes[edge.node2].r_clipping <= edge.ovlp
-                nodes[edge.node2].r_clipping = edge.ovlp
-        elif clip_node2 > edge.ovlp:
-            if edge.strand1:
-                assert nodes[edge.node1].r_clipping <= edge.ovlp
-                nodes[edge.node1].r_clipping = edge.ovlp
-            else:
-                assert nodes[edge.node1].l_clipping <= edge.ovlp
-                nodes[edge.node1].l_clipping = edge.ovlp
-        # If none of the previous applies, we have to decide which node to clip using further criteria.
-        else:
-            # The first criteria is the number of edges connected to each end (we'll clip the end with the most number of edges, as the other one is less likely to loose the information)
-            nr_edges1 = nodes[edge.node1].r_edges if edge.strand1 else nodes[edge.node1].l_edges
-            nr_edges2 = nodes[edge.node2].l_edges if edge.strand2 else nodes[edge.node2].r_edges
 
-            if nr_edges1 < nr_edges2:
-                if edge.strand2:
-                    assert nodes[edge.node2].l_clipping <= edge.ovlp
-                    nodes[edge.node2].l_clipping = edge.ovlp
-                else:
-                    assert nodes[edge.node2].r_clipping <= edge.ovlp
-                    nodes[edge.node2].r_clipping = edge.ovlp
-            elif nr_edges1 > nr_edges2:
-                if edge.strand1:
-                    assert nodes[edge.node1].r_clipping <= edge.ovlp
-                    nodes[edge.node1].r_clipping = edge.ovlp
-                else:
-                    assert nodes[edge.node1].l_clipping <= edge.ovlp
-                    nodes[edge.node1].l_clipping = edge.ovlp
-            # If both ends have the same number of edges, we'll clip the bigger node of the two.
+        nr_edges1 = node1.r_edges if edge.strand1 else node1.l_edges
+        nr_edges2 = node2.l_edges if edge.strand2 else node2.r_edges
+
+        # First, check if one of the nodes is longer than the clipping,
+        #    then, the other node will be clipped.
+        # Otherwise, clip the node with the bigger number of edges.
+        # If equal,  clip the longer node.
+
+        #              2          1      1                        1          2      2
+        if (long_enough2, nr_edges1, node1.seq_len) > (long_enough1, nr_edges2, node2.seq_len):
+            if edge.strand1:
+                assert node1.r_clipping <= edge.ovlp
+                node1.r_clipping = edge.ovlp
             else:
-                if nodes[edge.node1].seq_len > nodes[edge.node2].seq_len:
-                    if edge.strand1:
-                        assert nodes[edge.node1].r_clipping <= edge.ovlp
-                        nodes[edge.node1].r_clipping = edge.ovlp
-                    else:
-                        assert nodes[edge.node1].l_clipping <= edge.ovlp
-                        nodes[edge.node1].l_clipping = edge.ovlp
-                else:
-                    if edge.strand2:
-                        assert nodes[edge.node2].l_clipping <= edge.ovlp
-                        nodes[edge.node2].l_clipping = edge.ovlp
-                    else:
-                        assert nodes[edge.node2].r_clipping <= edge.ovlp
-                        nodes[edge.node2].r_clipping = edge.ovlp
+                assert node1.l_clipping <= edge.ovlp
+                node1.l_clipping = edge.ovlp
+        else:
+            if edge.strand2:
+                assert node2.l_clipping <= edge.ovlp
+                node2.l_clipping = edge.ovlp
+            else:
+                assert node2.r_clipping <= edge.ovlp
+                node2.r_clipping = edge.ovlp
 
     c_stop = perf_counter()
     print("Nodes clipped in {}s".format(c_stop-c_start), file=sys.stderr)
