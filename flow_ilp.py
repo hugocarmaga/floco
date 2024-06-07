@@ -110,13 +110,11 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                 model.addConstr(sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
                 model.addConstr(sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)
 
-        r_edge = alpha ** 2 / ((max(beta ** 2, alpha + 1e-6)) - alpha ** 2)
-        p_edge = alpha / (max(beta ** 2, alpha + 1e-6))
         ### Objective function
         model.setObjective(sum(p_cn[node] for node in nodes) + source_prob * sum(source_left[node] + source_right[node] + sink_left[node] + sink_right[node] for node in double_sides) +
                            sum(cheap_source*source_left[node] + source_prob*source_right[node] + cheap_source*sink_left[node] + source_prob*sink_right[node] for node in free_left_side) +
                            sum(source_prob*source_left[node] + cheap_source*source_right[node] + source_prob*sink_left[node] + cheap_source*sink_right[node] for node in free_right_side) +
-                           WEIGHT * sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(r_edge, p_edge, edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params)) for e in edges), GRB.MAXIMIZE)
+                           WEIGHT * sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params, cheap_source)) for e in edges), GRB.MAXIMIZE)
 
 
 
