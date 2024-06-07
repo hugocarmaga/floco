@@ -56,7 +56,6 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         # Create variable for later statistics on copy number concordance with the individual node probability
         concordance = defaultdict(list)
 
-        nb_per_size = defaultdict(list)
         # Iterate over all nodes to define the constraints
         for node in nodes:
             cov = coverages.get(node)
@@ -85,8 +84,6 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                 x = list(range(lower_bound, upper_bound))
                 y = y[lower_bound:]
                 assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
-
-                nb_per_size[m] = [r, p]
 
                 concordance[node] = [x[y.index(max(y))]]
 
@@ -138,7 +135,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         for v in model.getVars():
             all_results.append([v.varName, v.x])
 
-        return copy_numbers, all_results, concordance, nb_per_size
+        return copy_numbers, all_results, concordance
 
 
     except gp.GurobiError as e:
