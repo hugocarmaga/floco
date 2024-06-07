@@ -69,7 +69,7 @@ def write_copynums(copy_numbers, out_fname):
     with open(out_fname,"w") as out :
         out.write("Node name,Copy number,Coverage\n")
         for k,v in copy_numbers.items():
-            out.write(k+","+str(v[0])+","+str(v[1])+"\n")
+            out.write("{},{},{}\n".format(k, v[0], v[1]))
 
 def write_ilpresults(all_results, out_fname):
     with open(out_fname,"w") as out :
@@ -104,8 +104,8 @@ def main():
         bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
         bins_array = compute_bins_array(bins_node)
         alpha, beta, params = alpha_and_beta(bins_array, args.bin_size)  #####################################################################################
-        #with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
-            #pickle.dump((nodes,edges,coverages,alpha,beta,params), f)    #####################################################################################
+        with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
+            pickle.dump((nodes,edges,coverages,alpha,beta,params), f)    #####################################################################################
     elif args.pickle:
         nodes,edges,coverages,alpha,beta = pickle.load(open(args.pickle, 'rb'))
 

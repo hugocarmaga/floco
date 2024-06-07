@@ -1,15 +1,11 @@
-from collections import defaultdict, Counter
+from collections import defaultdict
 from dataclasses import dataclass
 import re
-import argparse
 import numpy as np
 from time import perf_counter
-from sklearn.cluster import KMeans
 import sys
 from scipy import stats, optimize, special
-from math import sqrt, dist, log
-import matplotlib.pyplot as plt
-import counts_to_probabs as ctp
+from math import sqrt
 
 @dataclass
 class Edge:

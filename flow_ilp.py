@@ -22,8 +22,6 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         p_cn = {node: model.addVar(vtype = GRB.CONTINUOUS, lb = - GRB.INFINITY, ub = 0, name = "p_cn_"+node) for node in nodes}
 
         # Edge flow on the two sides of the node - or just one variable for all edges
-        #left_edges = {edge: model.addVar(vtype=GRB.INTEGER, lb = 0, name="le_{}_{}".format(edge.node1, edge.node2)) for edge in edges}
-        #right_edges = {edge: model.addVar(vtype=GRB.INTEGER, lb = 0, name="re_{}_{}".format(edge.node1, edge.node2)) for edge in edges}
         edge_flow = {edges[edge]: model.addVar(vtype=GRB.INTEGER, lb = 0, name = edge) for edge in edges}
 
         #Filter out nodes with no coverage
@@ -58,7 +56,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         # Create variable for later statistics on copy number concordance with the individual node probability
         concordance = defaultdict(list)
 
-        nb_per_size = defaultdict(list) #######################################################################################
+        nb_per_size = defaultdict(list)
         # Iterate over all nodes to define the constraints
         for node in nodes:
             cov = coverages.get(node)
@@ -88,7 +86,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                 y = y[lower_bound:]
                 assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
 
-                nb_per_size[m] = [r, p] ######################################################################################
+                nb_per_size[m] = [r, p]
 
                 concordance[node] = [x[y.index(max(y))]]
 
@@ -124,12 +122,10 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         i_stop = perf_counter()
         print("ILP model generated and saved in {}s".format(i_stop-i_start), file=sys.stderr)
 
-        #print("Optimizing now!")
         o_start = perf_counter()
         model.optimize()
         o_stop = perf_counter()
         print("ILP optimization in {}s".format(o_stop-o_start), file=sys.stderr)
-        #print("Optimization finished!")
 
         ### Collect results
         all_results = [["Source_prob", source_prob], ["Objective_Value", model.objVal], ["Runtime",model.Runtime] ]
@@ -142,7 +138,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         for v in model.getVars():
             all_results.append([v.varName, v.x])
 
-        return copy_numbers, all_results, concordance, nb_per_size  #######################################################################################
+        return copy_numbers, all_results, concordance, nb_per_size
 
 
     except gp.GurobiError as e:
