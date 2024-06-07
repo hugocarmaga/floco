@@ -6,7 +6,7 @@ import counts_to_probabs as ctp
 from time import perf_counter
 import sys
 
-def ilp(nodes, edges, coverages, alpha, beta, outfile, source_prob = -80, cheap_source = -2, epsilon = 0.3, WEIGHT = 1):
+def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob = -80, cheap_source = -2, epsilon = 0.3, WEIGHT = 1):
     '''Function to formulate and solve the ILP for the flow network problem.'''
     try:
         i_start = perf_counter()
@@ -54,7 +54,7 @@ def ilp(nodes, edges, coverages, alpha, beta, outfile, source_prob = -80, cheap_
             '''Iterate over the edges and add them to the correct side of the respective nodes'''
             r_edges_out[edges[e].node1].append(edges[e]) if edges[e].strand1 else l_edges_out[edges[e].node1].append(edges[e])
             l_edges_in[edges[e].node2].append(edges[e]) if edges[e].strand2 else r_edges_in[edges[e].node2].append(edges[e])
-        
+
         # Create variable for later statistics on copy number concordance with the individual node probability
         concordance = defaultdict(list)
 
@@ -89,7 +89,7 @@ def ilp(nodes, edges, coverages, alpha, beta, outfile, source_prob = -80, cheap_
                 assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
 
                 nb_per_size[m] = [r, p] ######################################################################################
-                     
+
                 concordance[node] = [x[y.index(max(y))]]
 
                 cn[node] = model.addVar(vtype = GRB.INTEGER, lb = lower_bound, ub = upper_bound - 1,  name = "cn_"+node)
@@ -100,7 +100,7 @@ def ilp(nodes, edges, coverages, alpha, beta, outfile, source_prob = -80, cheap_
                 model.addConstr(source_right[node] + sum(edge_flow[e] for e in r_edges_in[node]) == sink_left[node] + sum(edge_flow[e] for e in l_edges_out[node]), "flow_right_" +node)
                 model.addConstr(source_left[node] + source_right[node] + sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
                 model.addConstr(sink_left[node] + sink_right[node] + sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)
-            
+
             else:
                 concordance[node] = [-1]
 
@@ -108,7 +108,7 @@ def ilp(nodes, edges, coverages, alpha, beta, outfile, source_prob = -80, cheap_
                 model.addConstr(sum(edge_flow[e] for e in l_edges_in[node]) == sum(edge_flow[e] for e in r_edges_out[node]), "flow_left_" +node)
                 model.addConstr(sum(edge_flow[e] for e in r_edges_in[node]) == sum(edge_flow[e] for e in l_edges_out[node]), "flow_right_" +node)
                 model.addConstr(sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
-                model.addConstr(sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)           
+                model.addConstr(sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)
 
         r_edge = alpha ** 2 / ((max(beta ** 2, alpha + 1e-6)) - alpha ** 2)
         p_edge = alpha / (max(beta ** 2, alpha + 1e-6))
@@ -116,7 +116,7 @@ def ilp(nodes, edges, coverages, alpha, beta, outfile, source_prob = -80, cheap_
         model.setObjective(sum(p_cn[node] for node in nodes) + source_prob * sum(source_left[node] + source_right[node] + sink_left[node] + sink_right[node] for node in double_sides) +
                            sum(cheap_source*source_left[node] + source_prob*source_right[node] + cheap_source*sink_left[node] + source_prob*sink_right[node] for node in free_left_side) +
                            sum(source_prob*source_left[node] + cheap_source*source_right[node] + source_prob*sink_left[node] + cheap_source*sink_right[node] for node in free_right_side) +
-                           WEIGHT * sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(r_edge, p_edge, edges[e].sup_reads)) for e in edges), GRB.MAXIMIZE)
+                           WEIGHT * sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(r_edge, p_edge, edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params)) for e in edges), GRB.MAXIMIZE)
 
 
 
@@ -136,16 +136,16 @@ def ilp(nodes, edges, coverages, alpha, beta, outfile, source_prob = -80, cheap_
         ### Collect results
         all_results = [["Source_prob", source_prob], ["Objective_Value", model.objVal], ["Runtime",model.Runtime] ]
         copy_numbers = {node: [int(var.x), coverages.get(node)] for node, var in cn.items()}
-        
+
         for node, var in cn.items():
             if concordance[node][0] >= 0:
                 concordance[node] = [coverages[node], nodes[node].clipped_len(), int(var.x), concordance[node][0], int(var.x) - concordance[node][0]]
 
         for v in model.getVars():
             all_results.append([v.varName, v.x])
-        
+
         return copy_numbers, all_results, concordance, nb_per_size  #######################################################################################
-        
+
 
     except gp.GurobiError as e:
         print('Error code ' + str(e.errno) + ': ' + str(e))

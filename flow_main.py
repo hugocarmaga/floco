@@ -100,7 +100,7 @@ def main():
         nodes, edges = read_graph(args.graph)
         clip_nodes(nodes, edges)
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
-        coverages = calculate_covs(args.graphalignment, nodes, edges)
+        coverages, rlen_params = calculate_covs(args.graphalignment, nodes, edges)
         bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
         bins_array = compute_bins_array(bins_node)
         alpha, beta, params = alpha_and_beta(bins_array, args.bin_size)  #####################################################################################
@@ -109,7 +109,7 @@ def main():
     elif args.pickle:
         nodes,edges,coverages,alpha,beta = pickle.load(open(args.pickle, 'rb'))
 
-    copy_numbers, all_results, concordance, nb_per_size = ilp(nodes, edges, coverages, alpha, beta, args.outcov, args.super_prob, args.cheap_prob, args.epsilon, args.weight)
+    copy_numbers, all_results, concordance, nb_per_size = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon, args.weight)
     print("Writing results to output files!")
     write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
@@ -117,6 +117,7 @@ def main():
     with open("dump-estimation_debug-{}.tmp.pkl".format(args.outcov), 'wb') as f:  #############################################################################
         pickle.dump((nodes,edges,coverages,bins_array,alpha,beta,params,nb_per_size), f)
 
+'''
 def main_bins():
     args = parse_arguments()
     nodes, edges = read_graph(args.graph)
@@ -128,7 +129,8 @@ def main_bins():
     filtered_bins = filter_100bins(nodes, nodes_to_bin, 100)
     bins_array = compute_bins_array(filtered_bins)
     output_bins(bins_array, "cov-per-bin.csv")
-    
+    '''
+
 if __name__ == "__main__":
     main()
     #main_bins()

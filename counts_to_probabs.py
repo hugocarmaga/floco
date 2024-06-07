@@ -1,4 +1,5 @@
 from scipy.stats import nbinom as nb
+from scipy.stats import skewnorm as sn
 from scipy.special import logsumexp
 import numpy as np
 from math import log
@@ -20,7 +21,7 @@ def counts_to_probs(r, p, mu, d, n=3, epsilon=0.3):
         #prior = 0 if c != 0 else LOG2
         cr = max(c, epsilon) * r    # Compute CN times r, adjusting for CN=0
         probs_c_given_d[c] = nb.logpmf(d, cr, p) #+ prior
-    
+
     # Compute probabilities to the left of the interval to include other values within a certain p-value
     lower_bound = 0
     for c in range(i-1, -1, -1):
@@ -54,12 +55,18 @@ def counts_to_probs(r, p, mu, d, n=3, epsilon=0.3):
 
     return lower_bound, list(probs_c_given_d)
 
-def edge_cov_pen(r, p, d):
+def edge_cov_pen(r, p, d, alpha, ovlp, rlen_params):
     # Compute p_e0 and p_e1 for each edge, taking their "coverage" as an input
-    p_e0 = nb.logsf(d, r, p)
-    p_e1 = nb.logcdf(d, r, p)
+    skn = sn(*rlen_params)
+    if d < np.floor(alpha * skn.sf(ovlp) / 4):
+        p_e0 = nb.logsf(d, r, p)
+        p_e1 = nb.logcdf(d, r, p)
 
-    return p_e1-p_e0
+        return p_e1-p_e0
+
+    else:
+        return 0
+
 
 def plotting(nodes, coverages, r_bin, p_bin, bin_size):
     stats = list()
@@ -71,7 +78,7 @@ def plotting(nodes, coverages, r_bin, p_bin, bin_size):
         mu = r * (1-p) / p
         _, probs = counts_to_probs(r, p, mu, coverages[node])
         stats.append([m, round(mu, 1), coverages[node], probs])
-    
+
     subset = random.sample(stats, 5)
     for stat in subset:
         plt.clf()
@@ -79,9 +86,8 @@ def plotting(nodes, coverages, r_bin, p_bin, bin_size):
         plt.bar(range(stat[3].size), stat[3], tick_label = range(stat[3].size))
         plt.savefig("plots/probabilities/Node-len_{}_coverage_{}-chm13-chr22.png".format(stat[0], stat[1]))
 
-    
 
 
 
 
-    
+
