@@ -104,9 +104,9 @@ def main():
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
             pickle.dump((nodes,edges,coverages,alpha,beta,params), f)
     elif args.pickle:
-        nodes,edges,coverages,alpha,beta = pickle.load(open(args.pickle, 'rb'))
+        nodes,edges,coverages,alpha,beta,params = pickle.load(open(args.pickle, 'rb'))
 
-    copy_numbers, all_results, concordance, nb_per_size = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon)
+    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon)
     print("Writing results to output files!")
     write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
