@@ -56,6 +56,11 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         # Create variable for later statistics on copy number concordance with the individual node probability
         concordance = defaultdict(list)
 
+        # Constant value and coefficients for "edgeless" ends of nodes to be constrained
+        C = 10000
+        x1 = defaultdict()
+        x2 = defaultdict()
+
         # Iterate over all nodes to define the constraints
         for node in nodes:
             cov = coverages.get(node)
@@ -95,6 +100,22 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                 model.addConstr(source_right[node] + sum(edge_flow[e] for e in r_edges_in[node]) == sink_left[node] + sum(edge_flow[e] for e in l_edges_out[node]), "flow_right_" +node)
                 model.addConstr(source_left[node] + source_right[node] + sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
                 model.addConstr(sink_left[node] + sink_right[node] + sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)
+
+                # Constraints to keep the flow from using super edges in the same node end in opposite directions
+                if free_left_side.get(node):
+                    x1[node] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_"+node)
+                    x2[node] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_"+node)
+                    model.addConstr(C * x1[node] >= source_left[node], "cheap_left_in_"+node)
+                    model.addConstr(C * x2[node] >= sink_left[node], "cheap_left_out_"+node)
+                    model.addConstr(x1[node] + x2[node] == 1, "x_sum_"+node)
+
+                elif free_right_side.get(node):
+                    x1[node] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_"+node)
+                    x2[node] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_"+node)
+                    model.addConstr(C * x1[node] >= source_right[node], "cheap_right_in_"+node)
+                    model.addConstr(C * x2[node] >= sink_right[node], "cheap_right_out_"+node)
+                    model.addConstr(x1[node] + x2[node] == 1, "x_sum_"+node)
+
 
             else:
                 concordance[node] = [-1]
