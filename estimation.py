@@ -28,6 +28,12 @@ class Edge:
     def __hash__(self):
         return hash(self.to_tuple())
 
+    def echo_reverse(self):
+        if self.strand1 == self.strand2:
+            return "e_{}_{}_{}_{}".format(self.node2, "-" if self.strand2 else "+", self.node1, "-" if self.strand1 else "+")
+        else:
+            return "e_{}_{}_{}_{}".format(self.node2, "+" if self.strand1 else "-", self.node1, "+" if self.strand2 else "-")
+
 @dataclass(frozen=False)
 class Node:
     name: str

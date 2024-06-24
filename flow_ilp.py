@@ -6,7 +6,7 @@ import counts_to_probabs as ctp
 from time import perf_counter
 import sys
 
-def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob = -80, cheap_source = -2, epsilon = 0.3):
+def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob = -20, cheap_source = -2, epsilon = 0.3):
     '''Function to formulate and solve the ILP for the flow network problem.'''
     try:
         i_start = perf_counter()
@@ -49,18 +49,32 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         r_edges_in = defaultdict(list)
         l_edges_out = defaultdict(list)
         r_edges_out = defaultdict(list)
-        for e in edges:
-            '''Iterate over the edges and add them to the correct side of the respective nodes'''
-            r_edges_out[edges[e].node1].append(edges[e]) if edges[e].strand1 else l_edges_out[edges[e].node1].append(edges[e])
-            l_edges_in[edges[e].node2].append(edges[e]) if edges[e].strand2 else r_edges_in[edges[e].node2].append(edges[e])
 
-        # Create variable for later statistics on copy number concordance with the individual node probability
-        concordance = defaultdict(list)
-
-        # Constant value and coefficients for "edgeless" ends of nodes to be constrained
+        # Create variables needed for reverse edge flow penalty (penalize the usage of the same node in opposite directions)
         C = 10000
         x1 = defaultdict()
         x2 = defaultdict()
+        pen = 0.8 * source_prob
+        flow_penalty = model.LinExpr()
+
+        for k1 in edges:
+            '''Iterate over the edges and add them to the correct side of the respective nodes'''
+            r_edges_out[edges[k1].node1].append(edges[k1]) if edges[k1].strand1 else l_edges_out[edges[k1].node1].append(edges[k1])
+            l_edges_in[edges[k1].node2].append(edges[k1]) if edges[k1].strand2 else r_edges_in[edges[k1].node2].append(edges[k1])
+
+            # Iterate over the edge dictionary to add x1/x2 variables and constraints
+            k2 = edges[k1].echo_reverse()
+            e2 = edges.get(k2)
+            if e2 and k1 < k2:
+                x1[k1] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_"+k1)
+                x2[k1] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_"+k1)
+                model.addConstr(C * x1[k1] >= edge_flow, "x1_flow_"+k1)
+                model.addConstr(C * x2[k1] >= sink_right[node], "x2_flow_"+k1)
+                model.addConstr(x1[k1] + x2[k1] >= 1, "x_sum_flow_"+k1)
+                flow_penalty.add(x1[k1] + x2[k1] - 1, pen)
+
+        # Create variable for later statistics on copy number concordance with the individual node probability
+        concordance = defaultdict(list)
 
         # Iterate over all nodes to define the constraints
         for node in nodes:
@@ -104,33 +118,20 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                 model.addConstr(source_left[node] + source_right[node] + sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
                 model.addConstr(sink_left[node] + sink_right[node] + sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)
 
-                # Constraints to keep the flow from using super edges in the same node end in opposite directions
-                if free_left_side.get(node):
-                    x1[node] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_"+node)
-                    x2[node] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_"+node)
-                    model.addConstr(C * x1[node] >= source_left[node], "cheap_left_in_"+node)
-                    model.addConstr(C * x2[node] >= sink_left[node], "cheap_left_out_"+node)
-                    model.addConstr(x1[node] + x2[node] == 1, "x_sum_"+node)
+                # Constraints to add a penalty to the flow when using super edges in the same node end in opposite directions
+                x1[node+"_right"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_right_"+node)
+                x2[node+"_right"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_right_"+node)
+                model.addConstr(C * x1[node+"_right"] >= source_right[node], "super_right_in_"+node)
+                model.addConstr(C * x2[node+"_right"] >= sink_right[node], "super_right_out_"+node)
+                model.addConstr(x1[node+"_right"] + x2[node+"_right"] >= 1, "x_sum_right_"+node)
+                flow_penalty.add(x1[node+"_right"] + x2[node+"_right"] - 1, pen)
 
-                elif free_right_side.get(node):
-                    x1[node] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_"+node)
-                    x2[node] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_"+node)
-                    model.addConstr(C * x1[node] >= source_right[node], "cheap_right_in_"+node)
-                    model.addConstr(C * x2[node] >= sink_right[node], "cheap_right_out_"+node)
-                    model.addConstr(x1[node] + x2[node] == 1, "x_sum_"+node)
-
-                elif free_both.get(node):
-                    x1[node+"_1"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_1_"+node)
-                    x2[node+"_1"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_1_"+node)
-                    model.addConstr(C * x1[node+"_1"] >= source_right[node], "cheap_right_in_"+node)
-                    model.addConstr(C * x2[node+"_1"] >= sink_right[node], "cheap_right_out_"+node)
-                    model.addConstr(x1[node+"_1"] + x2[node+"_1"] == 1, "x_sum_1_"+node)
-                    x1[node+"_2"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_2_"+node)
-                    x2[node+"_2"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_2_"+node)
-                    model.addConstr(C * x1[node+"_2"] >= source_left[node], "cheap_left_in_"+node)
-                    model.addConstr(C * x2[node+"_2"] >= sink_left[node], "cheap_left_out_"+node)
-                    model.addConstr(x1[node+"_2"] + x2[node+"_2"] == 1, "x_sum_2_"+node)
-
+                x1[node+"_left"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_left_"+node)
+                x2[node+"_left"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_left_"+node)
+                model.addConstr(C * x1[node+"_left"] >= source_left[node], "super_left_in_"+node)
+                model.addConstr(C * x2[node+"_left"] >= sink_left[node], "super_left_out_"+node)
+                model.addConstr(x1[node+"_left"] + x2[node+"_left"] >= 1, "x_sum_left_"+node)
+                flow_penalty.add(x1[node+"_left"] + x2[node+"_left"] - 1, pen)
 
             else:
                 concordance[node] = [-1]
@@ -146,7 +147,8 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                            sum(cheap_source*source_left[node] + source_prob*source_right[node] + cheap_source*sink_left[node] + source_prob*sink_right[node] for node in free_left_side) +
                            sum(source_prob*source_left[node] + cheap_source*source_right[node] + source_prob*sink_left[node] + cheap_source*sink_right[node] for node in free_right_side) +
                            sum(cheap_source*source_left[node] + cheap_source*source_right[node] + cheap_source*sink_left[node] + cheap_source*sink_right[node] for node in free_both) +
-                           sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params, cheap_source)) for e in edges), GRB.MAXIMIZE)
+                           sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params, cheap_source)) for e in edges) +
+                           flow_penalty, GRB.MAXIMIZE)
 
 
 
