@@ -55,7 +55,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         x1 = defaultdict()
         x2 = defaultdict()
         pen = 0.8 * source_prob
-        flow_penalty = model.LinExpr()
+        flow_penalty = gp.LinExpr()
 
         for k1 in edges:
             '''Iterate over the edges and add them to the correct side of the respective nodes'''
