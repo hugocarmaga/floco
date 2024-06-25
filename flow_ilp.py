@@ -68,8 +68,8 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
             if e2 and k1 < k2:
                 x1[k1] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_"+k1)
                 x2[k1] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_"+k1)
-                model.addConstr(C * x1[k1] >= edge_flow, "x1_flow_"+k1)
-                model.addConstr(C * x2[k1] >= sink_right[node], "x2_flow_"+k1)
+                model.addConstr(C * x1[k1] >= edge_flow[edges[k1]], "x1_flow_"+k1)
+                model.addConstr(C * x2[k1] >= edge_flow[edges[k2]], "x2_flow_"+k1)
                 model.addConstr(x1[k1] + x2[k1] >= 1, "x_sum_flow_"+k1)
                 flow_penalty.add(x1[k1] + x2[k1] - 1, pen)
 
