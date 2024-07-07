@@ -118,7 +118,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                 model.addConstr(source_left[node] + source_right[node] + sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
                 model.addConstr(sink_left[node] + sink_right[node] + sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)
 
-                # Constraints to add a penalty to the flow when using super edges in the same node end in opposite directions
+                # Constraints to add a penalty to the flow when using edges in the same node end in opposite directions
                 x1[node+"_right"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_right_"+node)
                 x2[node+"_right"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_right_"+node)
                 model.addConstr(C * x1[node+"_right"] >= source_right[node], "super_right_in_"+node)
@@ -147,7 +147,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                            sum(cheap_source*source_left[node] + source_prob*source_right[node] + cheap_source*sink_left[node] + source_prob*sink_right[node] for node in free_left_side) +
                            sum(source_prob*source_left[node] + cheap_source*source_right[node] + source_prob*sink_left[node] + cheap_source*sink_right[node] for node in free_right_side) +
                            sum(cheap_source*source_left[node] + cheap_source*source_right[node] + cheap_source*sink_left[node] + cheap_source*sink_right[node] for node in free_both) +
-                           sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params, cheap_source)) for e in edges) +
+                           #sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params, cheap_source)) for e in edges) +
                            flow_penalty, GRB.MAXIMIZE)
 
 
