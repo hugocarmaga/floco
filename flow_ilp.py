@@ -147,7 +147,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                            sum(cheap_source*source_left[node] + source_prob*source_right[node] + cheap_source*sink_left[node] + source_prob*sink_right[node] for node in free_left_side) +
                            sum(source_prob*source_left[node] + cheap_source*source_right[node] + source_prob*sink_left[node] + cheap_source*sink_right[node] for node in free_right_side) +
                            sum(cheap_source*source_left[node] + cheap_source*source_right[node] + cheap_source*sink_left[node] + cheap_source*sink_right[node] for node in free_both) +
-                           #sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params, cheap_source)) for e in edges) +
+                           sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params, cheap_source)) for e in edges) +
                            flow_penalty, GRB.MAXIMIZE)
 
 
