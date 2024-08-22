@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 
 def counts_to_probs(i, j, r, p, d, epsilon=0.3):
     # Create list of j+1 -Inf probabilities
-    probs_c_given_d = [-np.inf] * (j + 1)
+    probs_c_given_d = [-np.inf] * j
 
     # Iterate through the initial interval to compute and save the probabilities for those CN values
-    for c in range(i, j+1):
+    for c in range(i, j):
         cr = max(c, epsilon) * r    # Compute CN times r, adjusting for CN=0
         probs_c_given_d[c] = nb.logpmf(d, cr, p)
 

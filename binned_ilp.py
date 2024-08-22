@@ -123,7 +123,7 @@ def ilp(nodes, edges, alpha, beta, rlen_params, outfile, source_prob = -20, chea
 
                 # Create vector of probabilities from lower_bound to upper_bound
                 probs = np.zeros(upper_bound - lower_bound,  dtype=np.float64)
-                print(upper_bound, lower_bound, probs.size)
+
                 # Iterate a second time to compute the probabilities for all bins in the given interval
                 for b in sampled_bins:
                     probs += ctp.counts_to_probs(lower_bound, upper_bound, r, p, b, epsilon)
