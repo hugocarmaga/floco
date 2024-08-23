@@ -64,9 +64,9 @@ def parse_arguments():
 
 def write_copynums(copy_numbers, out_fname):
     with open(out_fname,"w") as out :
-        out.write("Node name,Copy number,Coverage\n")
+        out.write("Node name,Copy number\n")
         for k,v in copy_numbers.items():
-            out.write("{},{},{}\n".format(k, v[0], v[1]))
+            out.write("{},{}\n".format(k, v))
 
 def write_ilpresults(all_results, out_fname):
     with open(out_fname,"w") as out :
