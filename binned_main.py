@@ -66,7 +66,7 @@ def write_copynums(copy_numbers, out_fname):
     with open(out_fname,"w") as out :
         out.write("Node name,Copy number\n")
         for k,v in copy_numbers.items():
-            out.write("{},{}\n".format(k, v))
+            out.write("{},{}\n".format(k, v[0]))
 
 def write_ilpresults(all_results, out_fname):
     with open(out_fname,"w") as out :
