@@ -102,9 +102,9 @@ def main():
         if args.params:
             alpha, beta, params = pickle.load(open(args.params, 'rb'))
         else:
-            alpha, beta, params = alpha_and_beta(bins_array, args.bin_size)
             bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
             bins_array = compute_bins_array(bins_node)
+            alpha, beta, params = alpha_and_beta(bins_array, args.bin_size)
             with open("dump-{}.parameters.tmp.pkl".format(args.outcov), 'wb') as p:
                 pickle.dump((alpha,beta,params), p)
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
