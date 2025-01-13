@@ -91,6 +91,21 @@ def write_solutionmetrics(concordance, alpha, beta, nodes, out_fname):
             out.write("{},{}\n".format(node, ",".join([str(stat) for stat in concordance[node]])))
 
 
+# def write_coverage(nodes, out_fname, alpha, beta, eps):
+#     import gzip
+
+#     with gzip.open(out_fname, 'wt') as out:
+#         out.write('node\tbinsize\tix\tcov\n')
+#         for node in nodes.values():
+#             if node.bins is None:
+#                 continue
+
+#             for bin_size, cov_bins in node.bins:
+#                 prefix = f'{node.name}\t{bin_size}\t'
+#                 for k, cov in enumerate(cov_bins):
+#                     out.write(f'{prefix}{k}\t{cov}\n')
+
+
 def main():
     args = parse_arguments()
     import pickle
@@ -108,7 +123,7 @@ def main():
             with open("dump-{}.parameters.tmp.pkl".format(args.outcov), 'wb') as f:
                 pickle.dump((alpha,beta,params), f)
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
-            pickle.dump((nodes,edges,alpha,beta,params,rlen_params), f)
+            pickle.dump((nodes,edges,rlen_params), f)
     elif args.pickle:
         alpha, beta, params = pickle.load(open(args.params, 'rb'))
         nodes, edges, rlen_params = pickle.load(open(args.pickle, 'rb'))
@@ -118,6 +133,7 @@ def main():
     write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     #write_solutionmetrics(concordance, alpha, beta, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
+    # write_coverage(nodes, 'coverage.csv.gz', alpha, beta, 0.3)
 
 if __name__ == "__main__":
     main()

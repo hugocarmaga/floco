@@ -187,9 +187,13 @@ def calculate_covs(alignment_fname, nodes, edges):
     a_start = perf_counter()
     # We read the GAF file, and count the aligned bp per each node of each alignment
     with open(alignment_fname,"r") as alignment_file:
+        prev = None
         for line in alignment_file:
             nr_align += 1
             columns = line.split("\t")
+            if prev == columns[0]:
+                continue
+            prev = columns[0]
 
             # Append read length
             read_length.append(int(columns[1]))
