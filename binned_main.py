@@ -38,6 +38,7 @@ def parse_arguments():
     parser.add_argument("-e", "--epsilon", type=float, default=0.3, help="Epsilon value for adjusting CN0 counts to probabilities (default:%(default)s)")
     parser.add_argument("-b", "--bin-size", default=100, type=int, help="Set the bin size to use for the NB parameters' estimation. (default:%(default)s)")
     parser.add_argument("-d", "--pickle", type=str, help="Pickle dump with the data.", required=False)
+    parser.add_argument("-m", "--params", type=str, help="Pickle dump with the parameters only.", required=False)
 
     args = parser.parse_args()
 
@@ -90,6 +91,21 @@ def write_solutionmetrics(concordance, alpha, beta, nodes, out_fname):
             out.write("{},{}\n".format(node, ",".join([str(stat) for stat in concordance[node]])))
 
 
+# def write_coverage(nodes, out_fname, alpha, beta, eps):
+#     import gzip
+
+#     with gzip.open(out_fname, 'wt') as out:
+#         out.write('node\tbinsize\tix\tcov\n')
+#         for node in nodes.values():
+#             if node.bins is None:
+#                 continue
+
+#             for bin_size, cov_bins in node.bins:
+#                 prefix = f'{node.name}\t{bin_size}\t'
+#                 for k, cov in enumerate(cov_bins):
+#                     out.write(f'{prefix}{k}\t{cov}\n')
+
+
 def main():
     args = parse_arguments()
     import pickle
@@ -98,19 +114,26 @@ def main():
         clip_nodes(nodes, edges)
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
         rlen_params = calculate_covs(args.graphalignment, nodes, edges)
-        bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
-        bins_array = compute_bins_array(bins_node)
-        alpha, beta, params = alpha_and_beta(bins_array, args.bin_size)
+        if args.params:
+            alpha, beta, params = pickle.load(open(args.params, 'rb'))
+        else:
+            bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
+            bins_array = compute_bins_array(bins_node)
+            alpha, beta, params = alpha_and_beta(bins_array, args.bin_size)
+            with open("dump-{}.parameters.tmp.pkl".format(args.outcov), 'wb') as f:
+                pickle.dump((alpha,beta,params), f)
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
-            pickle.dump((nodes,edges,alpha,beta,params,rlen_params), f)
+            pickle.dump((nodes,edges,rlen_params), f)
     elif args.pickle:
-        nodes,edges,alpha,beta,params,rlen_params = pickle.load(open(args.pickle, 'rb'))
+        alpha, beta, params = pickle.load(open(args.params, 'rb'))
+        nodes, edges, rlen_params = pickle.load(open(args.pickle, 'rb'))
 
     copy_numbers, all_results, concordance = ilp(nodes, edges, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon)
     print("Writing results to output files!")
     write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     #write_solutionmetrics(concordance, alpha, beta, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
+    # write_coverage(nodes, 'coverage.csv.gz', alpha, beta, 0.3)
 
 if __name__ == "__main__":
     main()
