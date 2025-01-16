@@ -441,9 +441,11 @@ def estimate_mean_std(counts, bp_step, ROUND_BINS, f):
         cs = np.log(parameters[2:]/s)
         rs = np.maximum(np.arange(N_CN), 0.01) * r
 
-        sum_dist = [count * special.logsumexp(cs + stats.nbinom.logpmf((i + 1/2)*bp_step, rs, p)) for i, count in enumerate(counts)]
+        sum_dist = [count * special.logsumexp(cs + stats.nbinom.logpmf(np.round((i + 1/2)*bp_step), rs, p))
+            for i, count in enumerate(counts)]
 
         LL = min(1e30, -np.sum(sum_dist))
+
         s_str = ','.join(map('{:.8f}'.format, parameters[2:] / s))
         f.write(f'{m:.5f}\t{sd:.5f}\t{r:.5f}\t{p:.8f}\t{s_str}\t{LL:.8f}\n')
 
@@ -457,32 +459,31 @@ def estimate_mean_std(counts, bp_step, ROUND_BINS, f):
         return LL
 
     # Iterate over the array and get the coverage value with the highest frequency (including some padding)
-    s_max = 0
-    k_max = 0
-    cum_sum = np.cumsum(counts)
-    n = counts.size - 1
-    WINDOW = ROUND_BINS // 2
-    for i in range(WINDOW, counts.size - WINDOW):
-        start1 = i - WINDOW - 1
-        end1 = i + WINDOW
-        start2 = max(2*i-WINDOW-1,i+WINDOW)
-        end2 = 2*i+WINDOW
+    # s_max = 0
+    # k_max = 0
+    # cum_sum = np.cumsum(counts)
+    # n = counts.size - 1
+    # WINDOW = ROUND_BINS // 2
+    # for i in range(WINDOW, counts.size - WINDOW):
+    #     start1 = i - WINDOW - 1
+    #     end1 = i + WINDOW
 
-        s = cum_sum[min(end2, n)] - cum_sum[np.clip(start2, end1, n)] # + cum_sum[min(end1, n)] - cum_sum[start1]
-        if s > s_max:
-            s_max = s
-            k_max = i
+    #     s = cum_sum[min(end1, n)] - cum_sum[start1]
+    #     if s > s_max:
+    #         s_max = s
+    #         k_max = i
 
     # Create a vector of coefficients for each copy number (up to copy number N_CN-1)
     N_CN = 4
-    cs = []
-    for j in range(N_CN):
-        cs.append(sum(counts[int((j-1/2)*k_max):int((j+1/2)*k_max)+1]))
+    # cs = []
+    # for j in range(N_CN):
+    #     cs.append(sum(counts[int((j-1/2)*k_max):int((j+1/2)*k_max)+1]))
 
-    cs = np.array(cs)
-    # Normalize the vector, dividing it by the total sum of coefficients
-    cs = cs / np.sum(cs)
+    # cs = np.array(cs)
+    # # Normalize the vector, dividing it by the total sum of coefficients
+    # cs = cs / np.sum(cs)
 
+    k_max = np.argmax(counts)
     # Get initial values of m and sd
     m0 = (k_max + 0.5) * bp_step
     sd = m0/2
@@ -491,15 +492,16 @@ def estimate_mean_std(counts, bp_step, ROUND_BINS, f):
     params_max = None
     ll_max = 1e30
 
-    bounds = [(m0 * 0.2, m0 / 0.2), (m0 * 0.05, m0 / 0.05)]
-    x0 = [m0, m0]
+    s0 = m0 / 5
+    x0 = [m0, s0]
+    bounds = [(m0 / 5, m0 * 5), (s0 / 20, s0 * 20)]
     for j in range(N_CN):
         if j == 1:
             bounds.append((0.5, 1.0))
-            x0.append(0.9)
+            x0.append(0.99)
         else:
             bounds.append((0.0, 0.25))
-            x0.append(0.05)
+            x0.append(0.005)
 
     sol = optimize.minimize(MLE_NBinom, tuple(x0), bounds=tuple(bounds), method='Nelder-Mead')
 
