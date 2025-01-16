@@ -471,7 +471,7 @@ def estimate_mean_std(counts, bp_step, ROUND_BINS):
         start2 = max(2*i-WINDOW-1,i+WINDOW)
         end2 = 2*i+WINDOW
 
-        s = cum_sum[min(end2, n)] - cum_sum[np.clip(start2, end1, n)] + cum_sum[min(end1, n)] - cum_sum[start1]
+        s = cum_sum[min(end2, n)] - cum_sum[np.clip(start2, end1, n)] # + cum_sum[min(end1, n)] - cum_sum[start1]
         if s > s_max:
             s_max = s
             k_max = i
@@ -494,7 +494,17 @@ def estimate_mean_std(counts, bp_step, ROUND_BINS):
     params_max = None
     ll_max = 1e30
 
-    sol = optimize.minimize(MLE_NBinom, np.append([m0, sd], cs), bounds=((m0 * 0.8, m0 * 1.2), (m0 * 0.1, m0 * 10),) + tuple((c*0.5, c*1.5+1e-5) for c in cs), method='Nelder-Mead')
+    bounds = [(m0 * 0.2, m0 / 0.2), (m0 * 0.05, m0 / 0.05)]
+    x0 = [m0, m0]
+    for j in range(N_CN):
+        if j == 1:
+            bounds.append((0.5, 1.0))
+            x0.append(0.9)
+        else:
+            bounds.append((0.0, 0.25))
+            x0.append(0.05)
+
+    sol = optimize.minimize(MLE_NBinom, tuple(x0), bounds=tuple(bounds), method='Nelder-Mead')
     f.close()
 
     m, sd = sol.x[:2]

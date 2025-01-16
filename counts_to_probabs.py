@@ -4,7 +4,6 @@ from scipy.special import logsumexp
 import numpy as np
 from math import log
 import random
-import matplotlib.pyplot as plt
 
 def counts_to_probs(r, p, mu, d, n=3, epsilon=0.3):
     # Get an initial interval of copy number values to look at. Use division of observed coverage over mean coverage to get an initial value
@@ -66,6 +65,7 @@ def edge_cov_pen(d, alpha, ovlp, rlen_params, penalty):
 
 
 def plotting(nodes, coverages, r_bin, p_bin, bin_size):
+    import matplotlib.pyplot as plt
     stats = list()
     for node in coverages:
         n = bin_size
@@ -82,9 +82,3 @@ def plotting(nodes, coverages, r_bin, p_bin, bin_size):
         plt.title("Node, with size {}, mean {} and coverage {}.".format(stat[0], stat[1], stat[2]))
         plt.bar(range(stat[3].size), stat[3], tick_label = range(stat[3].size))
         plt.savefig("plots/probabilities/Node-len_{}_coverage_{}-chm13-chr22.png".format(stat[0], stat[1]))
-
-
-
-
-
-

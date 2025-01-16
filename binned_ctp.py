@@ -4,7 +4,6 @@ from scipy.special import logsumexp
 import numpy as np
 from math import log
 import random
-import matplotlib.pyplot as plt
 
 def counts_to_probs(i, j, r, p, d, epsilon=0.3):
     # Create list of j+1 -Inf probabilities
@@ -56,6 +55,7 @@ def edge_cov_pen(d, alpha, ovlp, rlen_params, penalty):
 
 
 def plotting(nodes, coverages, r_bin, p_bin, bin_size):
+    import matplotlib.pyplot as plt
     stats = list()
     for node in coverages:
         n = bin_size
