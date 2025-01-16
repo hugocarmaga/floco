@@ -280,6 +280,15 @@ def calculate_covs(alignment_fname, nodes, edges):
     a_stop = perf_counter()
     print("Read {} alignments in {}s".format(nr_align,a_stop-a_start), file=sys.stderr)
 
+    with open('cov.csv', 'w') as f:
+        f.write('node\tlen\tcov\n')
+        for node in nodes.values():
+            f.write(f'{node.name}\t{node.clipped_len()}\t{coverages[node.name]}\n')
+            if node.bins:
+                for binsize, values in node.bins:
+                    for v in values:
+                        f.write(f'{node.name}\t{binsize}\t{v}\n')
+
     ae, loce, scalee = _fit_skewnorm(read_length)
 
     return coverages, (ae, loce, scalee)
@@ -346,22 +355,40 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
     bp_cov_per_node = defaultdict()  # Dictionary to save the bins that pass the filtering criteria
     mean_per_node = defaultdict()  # Dictionary to save the average bin coverage for all the binned nodes
 
+    dbg = open('filtering.txt', 'w')
+    dbg.write('name\tstatus\n')
+
     # Iterate over binned_nodes
     for node in nodes_to_bin:
+        binned = False
         for (bin_size, cov_bins) in nodes[node].bins:
             if bin_size == sel_size:
+                binned = True
                 # Keep only nodes with 10 bins or more and with at least one bin with a coverage bigger than the bin size
-                if cov_bins[cov_bins >= sel_size].size:
+                if np.any(cov_bins >= sel_size):
                     bp_cov_per_node[node] = cov_bins
                     mean_per_node[node] = np.mean(cov_bins)   # Compute the mean bin coverage per node
+                else:
+                    dbg.write(f'{node}\tlow_cov\n')
+        if not binned:
+            dbg.write(f'{node}\ttoo_short\n')
 
     # Remove top and bottom 3% of nodes, based on the mean bin coverage. Then, remove bins with coverage bigger or equal to 3 times the median bin coverage of the node.
     TOP_PERC = 3
     thresh = np.quantile(np.array(list(mean_per_node.values())), [TOP_PERC/100, (100 - TOP_PERC)/100])
-    bins_node = {node: bins for node,bins in bp_cov_per_node.items() if thresh[0] <= np.mean(bins) <= thresh[1]}
+    bins_node = {node: bins for node,bins in bp_cov_per_node.items() if thresh[0] <= mean_per_node[node] <= thresh[1]}
+    for node, m in mean_per_node.items():
+        if m < thresh[0]:
+            dbg.write(f'{node}\tbottom_perc\n')
+        elif m > thresh[1]:
+            dbg.write(f'{node}\ttop_perc\n')
+        else:
+            dbg.write(f'{node}\tuse\n')
 
     f_stop = perf_counter()
     print("Bins filtered in {}s".format(f_stop-f_start), file=sys.stderr)
+
+    dbg.close()
 
     return bins_node
 
@@ -390,10 +417,19 @@ def compute_bins_array(bins_node):
     b_stop = perf_counter()
     print("Bins array computed in {}s".format(b_stop-b_start), file=sys.stderr)
 
+    with open('bins.csv', 'w') as f:
+        f.write('level\tcov\n')
+        for i, bins in enumerate(bins_array):
+            for v in bins:
+                f.write(f'{i}\t{v}\n')
+
     return bins_array
 
 def estimate_mean_std(counts, bp_step, ROUND_BINS):
     '''Function to estimate mean and standard deviation per bin size.'''
+
+    f = open('ab.csv', 'w')
+    f.write('m\ts\tr\tp\ts\tlik\n')
 
     def MLE_NBinom(parameters):
         # Changing parameters
@@ -411,6 +447,8 @@ def estimate_mean_std(counts, bp_step, ROUND_BINS):
         sum_dist = [count * special.logsumexp(cs + stats.nbinom.logpmf((i + 1/2)*bp_step, rs, p)) for i, count in enumerate(counts)]
 
         LL = min(1e30, -np.sum(sum_dist))
+        s_str = ','.join(map('{:.8f}'.format, parameters[2:] / s))
+        f.write(f'{m:.5f}\t{sd:.5f}\t{r:.5f}\t{p:.8f}\t{s_str}\t{LL:.8f}\n')
 
         # Save best LL and respective params
         nonlocal params_max
@@ -451,11 +489,13 @@ def estimate_mean_std(counts, bp_step, ROUND_BINS):
     # Get initial values of m and sd
     m0 = (k_max + 0.5) * bp_step
     sd = m0/2
+    f.write(f'{m0:.5f}\t{sd:.5f}\tNA\tNA\tNA\tNA\n')
 
     params_max = None
     ll_max = 1e30
 
     sol = optimize.minimize(MLE_NBinom, np.append([m0, sd], cs), bounds=((m0 * 0.8, m0 * 1.2), (m0 * 0.1, m0 * 10),) + tuple((c*0.5, c*1.5+1e-5) for c in cs), method='Nelder-Mead')
+    f.close()
 
     m, sd = sol.x[:2]
 
