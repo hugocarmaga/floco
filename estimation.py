@@ -425,11 +425,8 @@ def compute_bins_array(bins_node):
 
     return bins_array
 
-def estimate_mean_std(counts, bp_step, ROUND_BINS):
+def estimate_mean_std(counts, bp_step, ROUND_BINS, f):
     '''Function to estimate mean and standard deviation per bin size.'''
-
-    f = open('ab.csv', 'w')
-    f.write('m\ts\tr\tp\ts\tlik\n')
 
     def MLE_NBinom(parameters):
         # Changing parameters
@@ -505,7 +502,6 @@ def estimate_mean_std(counts, bp_step, ROUND_BINS):
             x0.append(0.05)
 
     sol = optimize.minimize(MLE_NBinom, tuple(x0), bounds=tuple(bounds), method='Nelder-Mead')
-    f.close()
 
     m, sd = sol.x[:2]
 
@@ -525,6 +521,9 @@ def alpha_and_beta(bins_array, sel_size = 100):
     TOP_PERC = 3
     ROUND_BINS = 4
 
+    f = open('ab.csv', 'w')
+    f.write('m\ts\tr\tp\ts\tlik\n')
+
     # Iterate over all bin sizes
     for size in cov:
         bins = np.array(cov[size])
@@ -540,10 +539,12 @@ def alpha_and_beta(bins_array, sel_size = 100):
         sys.stderr.write(f"{len(counts)} counts\n")
 
         # Get mean and standard deviation from MLE
-        mean, sd = estimate_mean_std(counts, bp_step, ROUND_BINS)
+        mean, sd = estimate_mean_std(counts, bp_step, ROUND_BINS, f)
 
         # Add them to a dictionary
         params[size] = [mean, sd]
+
+    f.close()
 
     sizes, vals = zip(*params.items())
     means, sds = zip(*vals)
