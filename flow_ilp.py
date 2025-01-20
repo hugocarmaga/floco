@@ -5,8 +5,61 @@ from collections import defaultdict
 import counts_to_probabs as ctp
 from time import perf_counter
 import sys
+import numpy as np
+import random
+from scipy.special import logsumexp
+import scipy.stats
+
+
+def bounds_and_probs(length, coverage, bins, alpha, beta, epsilon, subsampling_dist):
+    if bins is None:
+        nbins = 0
+    else:
+        binsize, arr_bins = bins[0]
+        nbins = int(np.floor(arr_bins.size * binsize / subsampling_dist))
+
+    if nbins <= 1:
+        mu = alpha * length
+        v = max((beta * length) ** 2, mu + 1e-6)
+        r = mu ** 2 / (v - mu)
+        p = mu / v
+        lower_bound, upper_bound = ctp.get_bounds(r, p, mu, coverage, 3, epsilon)
+        probs = ctp.counts_to_probs(lower_bound, upper_bound, r, p, coverage, epsilon)
+        probs -= logsumexp(probs)
+        return lower_bound, upper_bound, probs
+
+    # Compute mean and variance for the node, using its length
+    mu = alpha * binsize
+    v = max((beta * binsize) ** 2, mu + 1e-6)
+    r = mu ** 2 / (v - mu)
+    p = mu / v
+
+    # Sample 10% of the bins
+    sampled_bins = random.sample(arr_bins.tolist(), nbins)
+
+    # Iterate over the sampled bins one time to get the lower (inclusive) and upper (exclusive) bounds across all bins
+    lower_bound = np.inf
+    upper_bound = -np.inf
+    for b in sampled_bins:
+        lb, ub = ctp.get_bounds(r, p, mu, b, 3, epsilon)
+        lower_bound = min(lb, lower_bound)
+        upper_bound = max(ub, upper_bound)
+    assert upper_bound > lower_bound, "Lower bound for bins in node {} is not smaller than the upper bound".format(node)
+
+    # Create vector of probabilities from lower_bound to upper_bound
+    probs = np.zeros(upper_bound - lower_bound, dtype=np.float64)
+    # Iterate a second time to compute the probabilities for all bins in the given interval
+    for b in sampled_bins:
+        probs += ctp.counts_to_probs(lower_bound, upper_bound, r, p, b, epsilon)
+
+    # Normalize the probabilities and create y as a list
+    probs -= logsumexp(probs)
+    return lower_bound, upper_bound, probs
+
 
 def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob = -20, cheap_source = -2, epsilon = 0.3):
+    subsampling_dist = max(1000, scipy.stats.skewnorm.mean(*rlen_params))
+
     '''Function to formulate and solve the ILP for the flow network problem.'''
     try:
         i_start = perf_counter()
@@ -33,7 +86,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         free_right_side = defaultdict()
         free_both = defaultdict()
 
-        # Super-edges flow on the two sides of the node (I don't care if it's for the supersource or the supersink, only the node side matters)
+        # Super-edges flow on the two sides of the node
         source_left = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "source_left_"+node) for node in covered_nodes}
         source_right = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "source_right_"+node) for node in covered_nodes}
         sink_left = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "sink_left_"+node) for node in covered_nodes}
@@ -74,12 +127,12 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                 flow_penalty.add(x1[k1] + x2[k1] - 1, pen)
 
         # Create variable for later statistics on copy number concordance with the individual node probability
-        concordance = defaultdict(list)
+        likeliest_CNs = {}
 
         # Iterate over all nodes to define the constraints
         for node in nodes:
             cov = coverages.get(node)
-            if cov:
+            if cov is not None:
                 # Add nodes to the respective "edge sides" dictionary
                 if (l_edges_in.get(node) or l_edges_out.get(node)) and (r_edges_in.get(node) or r_edges_out.get(node)):
                     double_sides[node] = node
@@ -91,23 +144,12 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                     else:
                         free_both[node] = node
 
-
-                # PWL constraints for node CN probabilities
-                m = nodes[node].clipped_len()
-
-                # Compute mean and variance for the node, using its length
-                mu = alpha * m
-                v = max((beta * m) ** 2, mu + 1e-6)
-
-                r = mu ** 2 / (v - mu)
-                p = mu / v
-                lower_bound, y = ctp.counts_to_probs(r, p, mu, cov, 3, epsilon)
-                upper_bound = len(y)
+                lower_bound, upper_bound, y = bounds_and_probs(nodes[node].clipped_len(), cov, nodes[node].bins,
+                    alpha, beta, epsilon, subsampling_dist)
                 x = list(range(lower_bound, upper_bound))
-                y = y[lower_bound:]
                 assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
 
-                concordance[node] = [x[y.index(max(y))]]
+                likeliest_CNs[node] = lower_bound + np.argmax(y)
 
                 cn[node] = model.addVar(vtype = GRB.INTEGER, lb = lower_bound, ub = upper_bound - 1,  name = "cn_"+node)
                 model.addGenConstrPWL(cn[node], p_cn[node], x, y, "PWLConstr_"+node)
@@ -134,7 +176,6 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                 flow_penalty.add(x1[node+"_left"] + x2[node+"_left"] - 1, pen)
 
             else:
-                concordance[node] = [-1]
 
                 cn[node] = model.addVar(vtype = GRB.INTEGER, lb = 0, name = "cn_"+node)
                 model.addConstr(sum(edge_flow[e] for e in l_edges_in[node]) == sum(edge_flow[e] for e in r_edges_out[node]), "flow_left_" +node)
@@ -167,9 +208,12 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         all_results = [["Source_prob", source_prob], ["Objective_Value", model.objVal], ["Runtime",model.Runtime] ]
         copy_numbers = {node: [int(var.x), coverages.get(node)] for node, var in cn.items()}
 
+        concordance = {}
         for node, var in cn.items():
-            if concordance[node][0] >= 0:
-                concordance[node] = [coverages[node], nodes[node].clipped_len(), int(var.x), concordance[node][0], int(var.x) - concordance[node][0]]
+            likeliest_CN = likeliest_CNs.get(node)
+            if likeliest_CN is not None:
+                concordance[node] = [coverages[node], nodes[node].clipped_len(), int(var.x),
+                    likeliest_CN, int(var.x) - likeliest_CN]
 
         for v in model.getVars():
             all_results.append([v.varName, v.x])

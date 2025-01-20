@@ -1,6 +1,7 @@
 from collections import defaultdict
 from dataclasses import dataclass
 import re
+import warnings
 import numpy as np
 from time import perf_counter
 import sys
@@ -178,7 +179,7 @@ def calculate_covs(alignment_fname, nodes, edges):
     nodes = {k: v for k, v in nodes.items() if v.clipped_len() > 0}  #Filter out nodes where the left clipping point is bigger (or the same) than the rigth clipping one
 
     # We create a dict to save the number of aligned bp per node, and we also initiate a counter for the total number of aligned bp in the non-clipped area of the node
-    coverages = {key:0 for key in nodes}
+    coverages = {key: 0 for key in nodes}
 
     # Create list with read lengths
     read_length = []
@@ -301,16 +302,16 @@ def bin_nodes(nodes, bin_size = 100):
     nodes_to_bin = list()
     b_start = perf_counter()
     for node in nodes:
-        if nodes[node].clipped_len() >= bin_size:
+        size = nodes[node].clipped_len()
+        if size >= bin_size:
             nodes_to_bin.append(nodes[node].name)
-
-    #bin_sizes = [size for size in range(bin_sizes[0], bin_sizes[1]+1, bin_sizes[2])]
-    for node in nodes_to_bin:
-        # For each node, create a list of tuples with (bin size, array with the size of the nr of bins)
-        nodes[node].bins = list()
-        nr_bins = nodes[node].clipped_len() // bin_size
-        if nr_bins >= 10:
-            nodes[node].bins.append((bin_size,np.zeros(nr_bins, dtype=np.uint64)))
+            # For each node, create a list of tuples with (bin size, array with the size of the nr of bins)
+            nodes[node].bins = list()
+            nr_bins = size // bin_size
+            nodes[node].bins.append((bin_size, np.zeros(nr_bins, dtype=np.uint64)))
+        elif size > 0:
+            nodes[node].bins = list()
+            nodes[node].bins.append((size, np.zeros(1, dtype=np.uint64)))
 
     b_stop = perf_counter()
     print("Nodes binned in {}s".format(b_stop-b_start), file=sys.stderr)
@@ -350,7 +351,6 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
     for node in nodes_to_bin:
         for (bin_size, cov_bins) in nodes[node].bins:
             if bin_size == sel_size:
-                binned = True
                 # Keep only nodes with 10 bins or more and with at least one bin with a coverage bigger than the bin size
                 if np.any(cov_bins >= sel_size):
                     bp_cov_per_node[node] = cov_bins
@@ -396,82 +396,62 @@ def compute_bins_array(bins_node):
 def estimate_mean_std(counts, bp_step, ROUND_BINS):
     '''Function to estimate mean and standard deviation per bin size.'''
 
-    def MLE_NBinom(parameters):
-        # Changing parameters
-        m, sd = parameters[:2]
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', category=RuntimeWarning)
 
-        sd = max(sqrt(m)*1.0001, sd)
-        r = m**2 / (sd**2 - m)
-        p = m / sd**2
+        def MLE_NBinom(parameters):
+            # Changing parameters
+            m, sd = parameters[:2]
 
+            sd = max(sqrt(m)*1.0001, sd)
+            r = m**2 / (sd**2 - m)
+            p = m / sd**2
 
-        s = sum(parameters[2:])
-        cs = np.log(parameters[2:]/s)
-        rs = np.maximum(np.arange(N_CN), 0.01) * r
+            s = sum(parameters[2:])
+            cs = np.log(parameters[2:]/s)
+            rs = np.maximum(np.arange(N_CN), 0.01) * r
 
-        sum_dist = [count * special.logsumexp(cs + stats.nbinom.logpmf(np.round((i + 1/2)*bp_step), rs, p))
-            for i, count in enumerate(counts)]
+            sum_dist = [count * special.logsumexp(cs + stats.nbinom.logpmf(np.round((i + 1/2)*bp_step), rs, p))
+                for i, count in enumerate(counts)]
 
-        LL = min(1e30, -np.sum(sum_dist))
+            LL = min(1e30, -np.sum(sum_dist))
 
-        # Save best LL and respective params
-        nonlocal params_max
-        nonlocal ll_max
-        if LL < ll_max:
-            ll_max = LL
-            params_max = tuple(parameters)
+            # Save best LL and respective params
+            nonlocal params_max
+            nonlocal ll_max
+            if LL < ll_max:
+                ll_max = LL
+                params_max = tuple(parameters)
 
-        return LL
+            return LL
 
-    # Iterate over the array and get the coverage value with the highest frequency (including some padding)
-    # s_max = 0
-    # k_max = 0
-    # cum_sum = np.cumsum(counts)
-    # n = counts.size - 1
-    # WINDOW = ROUND_BINS // 2
-    # for i in range(WINDOW, counts.size - WINDOW):
-    #     start1 = i - WINDOW - 1
-    #     end1 = i + WINDOW
+        k_max = np.argmax(counts)
+        # Get initial values of m and sd
+        m0 = (k_max + 0.5) * bp_step
+        sd = m0/2
 
-    #     s = cum_sum[min(end1, n)] - cum_sum[start1]
-    #     if s > s_max:
-    #         s_max = s
-    #         k_max = i
+        params_max = None
+        ll_max = 1e30
 
-    # Create a vector of coefficients for each copy number (up to copy number N_CN-1)
-    N_CN = 4
-    # cs = []
-    # for j in range(N_CN):
-    #     cs.append(sum(counts[int((j-1/2)*k_max):int((j+1/2)*k_max)+1]))
+        s0 = m0 / 5
+        x0 = [m0, s0]
+        bounds = [(m0 / 5, m0 * 5), (s0 / 20, s0 * 20)]
 
-    # cs = np.array(cs)
-    # # Normalize the vector, dividing it by the total sum of coefficients
-    # cs = cs / np.sum(cs)
+        # Create a vector of coefficients for each copy number (up to copy number N_CN-1)
+        N_CN = 4
+        for j in range(N_CN):
+            if j == 1:
+                bounds.append((0.5, 1.0))
+                x0.append(0.99)
+            else:
+                bounds.append((0.0, 0.25))
+                x0.append(0.005)
 
-    k_max = np.argmax(counts)
-    # Get initial values of m and sd
-    m0 = (k_max + 0.5) * bp_step
-    sd = m0/2
+        sol = optimize.minimize(MLE_NBinom, tuple(x0), bounds=tuple(bounds), method='Nelder-Mead')
 
-    params_max = None
-    ll_max = 1e30
+        m, sd = sol.x[:2]
 
-    s0 = m0 / 5
-    x0 = [m0, s0]
-    bounds = [(m0 / 5, m0 * 5), (s0 / 20, s0 * 20)]
-    for j in range(N_CN):
-        if j == 1:
-            bounds.append((0.5, 1.0))
-            x0.append(0.99)
-        else:
-            bounds.append((0.0, 0.25))
-            x0.append(0.005)
-
-    sol = optimize.minimize(MLE_NBinom, tuple(x0), bounds=tuple(bounds), method='Nelder-Mead')
-
-    m, sd = sol.x[:2]
-
-    return m, sd
+        return m, sd
 
 def alpha_and_beta(bins_array, sel_size = 100):
     '''Get alpha and beta coefficients for NB parameters estimation.'''

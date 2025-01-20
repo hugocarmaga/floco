@@ -5,54 +5,62 @@ import numpy as np
 from math import log
 import random
 
-def counts_to_probs(r, p, mu, d, n=3, epsilon=0.3):
+# def ab_to_rp(m, alpha, beta):
+#     mu = alpha * m
+#     v = max((beta * m) ** 2, mu + 1e-6)
+
+#     r = mu ** 2 / (v - mu)
+#     p = mu / v
+#     return r, p
+
+
+def counts_to_probs(i, j, r, p, d, epsilon=0.3):
+    # array of adjusted copy numbers: from i to j, but 0 is replaced with epsilon.
+    adj_c = np.maximum(np.arange(i, j), epsilon)
+    # array of r for each CN
+    rs = r * adj_c
+    # returns array of not normalized log-probabilities
+    return nb.logpmf(d, rs, p)
+
+    # # Create list of j+1 -Inf probabilities
+    # probs_c_given_d = [-np.inf] * j
+
+    # # Iterate through the initial interval to compute and save the probabilities for those CN values
+    # for c in range(i, j):
+    #     cr = max(c, epsilon) * r    # Compute CN times r, adjusting for CN=0
+    #     probs_c_given_d[c] = nb.logpmf(d, cr, p)
+
+    # # Turn list into numpy array to get the sum of all probabilities, and then substract the log of the sum from all the probabilities (see formula for further detail)
+    # probs_c_given_d = np.array(probs_c_given_d[i:])
+    # #s = logsumexp(probs_c_given_d)
+    # #probs_c_given_d -= s
+
+    # return probs_c_given_d
+
+
+def get_bounds(r, p, mu, d, n=3, epsilon=0.3):
     # Get an initial interval of copy number values to look at. Use division of observed coverage over mean coverage to get an initial value
     i = max(round(d/mu) - n, 0)
     j = round(d/mu) + n
 
-    # Create list of j+1 -Inf probabilities
-    probs_c_given_d = [-np.inf] * (j + 1)
-    LOG2 = log(2)  # compute log(2) once to avoid doing it more than once
-
-    # Iterate through the initial interval to compute and save the probabilities for those CN values
-    for c in range(i, j+1):
-        # Get the prior value (log(1) for anything different than the ploidy, log(2) for the ploidy value)
-        #prior = 0 if c != 0 else LOG2
-        cr = max(c, epsilon) * r    # Compute CN times r, adjusting for CN=0
-        probs_c_given_d[c] = nb.logpmf(d, cr, p) #+ prior
-
-    # Compute probabilities to the left of the interval to include other values within a certain p-value
     lower_bound = 0
     for c in range(i-1, -1, -1):
         cr = max(c, epsilon) * r
         pval = 2 * min(nb.cdf(d, cr, p), nb.sf(d, cr, p))
-        #print(pval)
         if pval < 10e-3:  # If p-value is small, stop extending
-            #print("Breaking")
             lower_bound = c + 1
             break
-        else:   # Add the probability otherwise
-            #prior = 0 if c != 0 else LOG2
-            probs_c_given_d[c] = nb.logpmf(d, cr, p) #+ prior
 
     MAX_RIGHT_EXT = 101
     # Extend to the right of the interval to include other values within a certain p-value
     for c in range(j+1, j+MAX_RIGHT_EXT):
         pval = 2 * min(nb.cdf(d, c*r, p), nb.sf(d, c*r, p))
-        #print(pval)
         if pval < 10e-3:
-            #print("Breaking")
+            upper_bound = c
             break
-        else:
-            #prior = 0 if c != 0 else LOG2
-            probs_c_given_d.append(nb.logpmf(d, c*r, p) )#+ prior)
 
-    # Turn list into numpy array to get the sum of all probabilities, and then substract the log of the sum from all the probabilities (see formula for further detail)
-    probs_c_given_d = np.array(probs_c_given_d)
-    s = logsumexp(probs_c_given_d)
-    probs_c_given_d -= s
+    return lower_bound, upper_bound
 
-    return lower_bound, list(probs_c_given_d)
 
 def edge_cov_pen(d, alpha, ovlp, rlen_params, penalty):
     # Compute p_e0 and p_e1 for each edge, taking their "coverage" as an input
