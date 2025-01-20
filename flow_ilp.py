@@ -77,20 +77,19 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         # Edge flow on the two sides of the node - or just one variable for all edges
         edge_flow = {edges[edge]: model.addVar(vtype=GRB.INTEGER, lb = 0, name = edge) for edge in edges}
 
-        #Filter out nodes with no coverage
-        covered_nodes = {node: nodes[node] for node in nodes if coverages.get(node)}
-
         #Get different sets of nodes, with edges on both sides or just on the left/right side
-        double_sides = defaultdict()
-        free_left_side = defaultdict()
-        free_right_side = defaultdict()
-        free_both = defaultdict()
+        double_sides = {}
+        free_left_side = {}
+        free_right_side = {}
+        free_both = {}
 
+        # Set of non-empty nodes.
+        nonempty_nodes = { node for node in nodes if nodes[node].clipped_len() > 0 }
         # Super-edges flow on the two sides of the node
-        source_left = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "source_left_"+node) for node in covered_nodes}
-        source_right = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "source_right_"+node) for node in covered_nodes}
-        sink_left = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "sink_left_"+node) for node in covered_nodes}
-        sink_right = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "sink_right_"+node) for node in covered_nodes}
+        source_left = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "source_left_"+node) for node in nonempty_nodes}
+        source_right = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "source_right_"+node) for node in nonempty_nodes}
+        sink_left = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "sink_left_"+node) for node in nonempty_nodes}
+        sink_right = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "sink_right_"+node) for node in nonempty_nodes}
 
         model.update()
         print("Using secondary branch!")
@@ -131,8 +130,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
 
         # Iterate over all nodes to define the constraints
         for node in nodes:
-            cov = coverages.get(node)
-            if cov is not None:
+            if nodes[node].clipped_len() > 0:
                 # Add nodes to the respective "edge sides" dictionary
                 if (l_edges_in.get(node) or l_edges_out.get(node)) and (r_edges_in.get(node) or r_edges_out.get(node)):
                     double_sides[node] = node
@@ -144,7 +142,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                     else:
                         free_both[node] = node
 
-                lower_bound, upper_bound, y = bounds_and_probs(nodes[node].clipped_len(), cov, nodes[node].bins,
+                lower_bound, upper_bound, y = bounds_and_probs(nodes[node].clipped_len(), coverages[node], nodes[node].bins,
                     alpha, beta, epsilon, subsampling_dist)
                 x = list(range(lower_bound, upper_bound))
                 assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
