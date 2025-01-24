@@ -173,6 +173,51 @@ def clip_nodes(nodes,edges):
     c_stop = perf_counter()
     print("Nodes clipped in {}s".format(c_stop-c_start), file=sys.stderr)
 
+
+def select_read_alns(alns):
+    # Allow 1% overlap with previous alignments.
+    MAX_OVERLAP = 0.01
+
+    read_len = int(alns[0][1])
+    allowed_overlap = MAX_OVERLAP * read_len
+
+    # NOTE: Can use IntervalTree, but number of selected alignments is usually low, probably regular list will be faster.
+    covered = []
+    for rec in alns:
+        start = int(rec[2])
+        end = int(rec[3])
+        for cstart, cend in covered:
+            overlap = min(end, cend) - max(start, cstart)
+            if overlap > allowed_overlap:
+                break
+        else:
+            # No breaks happened.
+            yield rec
+            covered.append((start, end))
+
+
+def filter_gaf(f):
+    all_names = set()
+    curr_name = None
+    alns = []
+
+    for line in f:
+        columns = line.split('\t')
+        name = columns[0]
+        if name != curr_name:
+            if curr_name is not None:
+                yield from select_read_alns(alns)
+                alns.clear()
+                if name in all_names:
+                    raise RuntimeError(f'Input alignments must be sorted by read name (see {name})')
+            all_names.add(name)
+            curr_name = name
+        alns.append(columns)
+
+    if curr_name is not None:
+        yield from select_read_alns(alns)
+
+
 def calculate_covs(alignment_fname, nodes, edges):
     '''This function takes the GAF file as an input, as well as the dictionary with the Node objects, in order to count the number of aligned base pairs per node.'''
 
@@ -188,13 +233,8 @@ def calculate_covs(alignment_fname, nodes, edges):
     a_start = perf_counter()
     # We read the GAF file, and count the aligned bp per each node of each alignment
     with open(alignment_fname,"r") as alignment_file:
-        prev = None
-        for line in alignment_file:
+        for columns in filter_gaf(alignment_file):
             nr_align += 1
-            columns = line.split("\t")
-            if prev == columns[0]:
-                continue
-            prev = columns[0]
 
             # Append read length
             read_length.append(int(columns[1]))
