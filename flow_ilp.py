@@ -88,7 +88,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
             # Iterate over the edge dictionary to add x1/x2 variables and constraints
             k2 = edges[k1].echo_reverse()
             e2 = edges.get(k2)
-            if e2 and k1 < k2:
+            if e2 and k1 < k2 and complexity >= 3:
                 x1[k1] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_"+k1)
                 x2[k1] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_"+k1)
                 model.addConstr(C * x1[k1] >= edge_flow[edges[k1]], "x1_flow_"+k1)
@@ -130,20 +130,19 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
                 model.addConstr(source_left[node] + source_right[node] + sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
                 model.addConstr(sink_left[node] + sink_right[node] + sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)
 
-                # Constraints to add a penalty to the flow when using edges in the same node end in opposite directions
-                x1[node+"_right"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_right_"+node)
-                x2[node+"_right"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_right_"+node)
-                model.addConstr(C * x1[node+"_right"] >= source_right[node], "super_right_in_"+node)
-                model.addConstr(C * x2[node+"_right"] >= sink_right[node], "super_right_out_"+node)
-
-                x1[node+"_left"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_left_"+node)
-                x2[node+"_left"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_left_"+node)
-                model.addConstr(C * x1[node+"_left"] >= source_left[node], "super_left_in_"+node)
-                model.addConstr(C * x2[node+"_left"] >= sink_left[node], "super_left_out_"+node)
-
                 if complexity >= 3:
+                    # Constraints to add a penalty to the flow when using edges in the same node end in opposite directions
+                    x1[node+"_right"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_right_"+node)
+                    x2[node+"_right"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_right_"+node)
+                    model.addConstr(C * x1[node+"_right"] >= source_right[node], "super_right_in_"+node)
+                    model.addConstr(C * x2[node+"_right"] >= sink_right[node], "super_right_out_"+node)
                     model.addConstr(x1[node+"_right"] + x2[node+"_right"] >= 1, "x_sum_right_"+node)
                     flow_penalty.add(x1[node+"_right"] + x2[node+"_right"] - 1, pen)
+
+                    x1[node+"_left"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_left_"+node)
+                    x2[node+"_left"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_left_"+node)
+                    model.addConstr(C * x1[node+"_left"] >= source_left[node], "super_left_in_"+node)
+                    model.addConstr(C * x2[node+"_left"] >= sink_left[node], "super_left_out_"+node)
                     model.addConstr(x1[node+"_left"] + x2[node+"_left"] >= 1, "x_sum_left_"+node)
                     flow_penalty.add(x1[node+"_left"] + x2[node+"_left"] - 1, pen)
 
