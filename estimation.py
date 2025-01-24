@@ -178,14 +178,12 @@ def select_read_alns(alns):
     # Allow 1% overlap with previous alignments.
     MAX_OVERLAP = 0.01
 
-    read_len = int(alns[0][1])
-    allowed_overlap = MAX_OVERLAP * read_len
-
     # NOTE: Can use IntervalTree, but number of selected alignments is usually low, probably regular list will be faster.
     covered = []
     for rec in alns:
         start = int(rec[2])
         end = int(rec[3])
+        allowed_overlap = MAX_OVERLAP * (end - start)
         for cstart, cend in covered:
             overlap = min(end, cend) - max(start, cstart)
             if overlap > allowed_overlap:
@@ -519,7 +517,7 @@ def alpha_and_beta(bins_array, sel_size = 100):
         # Use a step to round and generate counts for rounded coverages
         bp_step = size // ROUND_BINS
         counts = np.bincount(np.round(bins / bp_step).astype(dtype=np.int64), minlength=int(round(thresh[1])) // bp_step + 1)
-        sys.stderr.write(f"{len(counts)} counts\n")
+        # sys.stderr.write(f"{len(counts)} counts\n")
 
         # Get mean and standard deviation from MLE
         mean, sd = estimate_mean_std(counts, bp_step, ROUND_BINS)

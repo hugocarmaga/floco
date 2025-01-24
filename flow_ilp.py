@@ -11,7 +11,7 @@ from scipy.special import logsumexp
 import scipy.stats
 
 
-def bounds_and_probs(length, coverage, bins, alpha, beta, epsilon, subsampling_dist):
+def bounds_and_probs(length, coverage, bins, alpha, beta, epsilon, subsampling_dist, diff_cutoff):
     if bins is None:
         nbins = 0
     else:
@@ -19,47 +19,15 @@ def bounds_and_probs(length, coverage, bins, alpha, beta, epsilon, subsampling_d
         nbins = int(np.floor(arr_bins.size * binsize / subsampling_dist))
 
     if nbins <= 1:
-        mu = alpha * length
-        v = max((beta * length) ** 2, mu + 1e-6)
-        r = mu ** 2 / (v - mu)
-        p = mu / v
-        lower_bound, upper_bound = ctp.get_bounds(r, p, mu, coverage, 3, epsilon)
-        probs = ctp.counts_to_probs(lower_bound, upper_bound, r, p, coverage, epsilon)
-        probs -= logsumexp(probs)
-        return lower_bound, upper_bound, probs
-
-    # Compute mean and variance for the node, using its length
-    mu = alpha * binsize
-    v = max((beta * binsize) ** 2, mu + 1e-6)
-    r = mu ** 2 / (v - mu)
-    p = mu / v
-
-    # Sample 10% of the bins
-    sampled_bins = random.sample(arr_bins.tolist(), nbins)
-
-    # Iterate over the sampled bins one time to get the lower (inclusive) and upper (exclusive) bounds across all bins
-    lower_bound = np.inf
-    upper_bound = -np.inf
-    for b in sampled_bins:
-        lb, ub = ctp.get_bounds(r, p, mu, b, 3, epsilon)
-        lower_bound = min(lb, lower_bound)
-        upper_bound = max(ub, upper_bound)
-    assert upper_bound > lower_bound, "Lower bound for bins in node {} is not smaller than the upper bound".format(node)
-
-    # Create vector of probabilities from lower_bound to upper_bound
-    probs = np.zeros(upper_bound - lower_bound, dtype=np.float64)
-    # Iterate a second time to compute the probabilities for all bins in the given interval
-    for b in sampled_bins:
-        probs += ctp.counts_to_probs(lower_bound, upper_bound, r, p, b, epsilon)
-
-    # Normalize the probabilities and create y as a list
-    probs -= logsumexp(probs)
-    return lower_bound, upper_bound, probs
+        return ctp.cn_probs(alpha, beta, epsilon,
+            length, coverage, length, [coverage], diff_cutoff)
+    else:
+        sampled_bins = random.sample(arr_bins.tolist(), nbins)
+        return ctp.cn_probs(alpha, beta, epsilon,
+            length, coverage, binsize, sampled_bins, diff_cutoff)
 
 
 def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob = -20, cheap_source = -2, epsilon = 0.3):
-    subsampling_dist = max(1000, scipy.stats.skewnorm.mean(*rlen_params))
-
     '''Function to formulate and solve the ILP for the flow network problem.'''
     try:
         i_start = perf_counter()
@@ -107,6 +75,8 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
         x1 = defaultdict()
         x2 = defaultdict()
         pen = 0.8 * source_prob
+        diff_cutoff = abs(4 * source_prob)
+        subsampling_dist = max(1000, scipy.stats.skewnorm.mean(*rlen_params))
         flow_penalty = gp.LinExpr()
 
         for k1 in edges:
@@ -142,8 +112,9 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                     else:
                         free_both[node] = node
 
-                lower_bound, upper_bound, y = bounds_and_probs(nodes[node].clipped_len(), coverages[node], nodes[node].bins,
-                    alpha, beta, epsilon, subsampling_dist)
+                lower_bound, y = bounds_and_probs(nodes[node].clipped_len(), coverages[node], nodes[node].bins,
+                    alpha, beta, epsilon, subsampling_dist, diff_cutoff)
+                upper_bound = lower_bound + len(y)
                 x = list(range(lower_bound, upper_bound))
                 assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
 
