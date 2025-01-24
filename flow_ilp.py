@@ -27,7 +27,8 @@ def bounds_and_probs(length, coverage, bins, alpha, beta, epsilon, subsampling_d
             length, coverage, binsize, sampled_bins, diff_cutoff)
 
 
-def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob = -20, cheap_source = -2, epsilon = 0.3):
+def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
+        source_prob = -20, cheap_source = -2, epsilon = 0.3, complexity = 2):
     '''Function to formulate and solve the ILP for the flow network problem.'''
     try:
         i_start = perf_counter()
@@ -134,15 +135,17 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                 x2[node+"_right"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_right_"+node)
                 model.addConstr(C * x1[node+"_right"] >= source_right[node], "super_right_in_"+node)
                 model.addConstr(C * x2[node+"_right"] >= sink_right[node], "super_right_out_"+node)
-                model.addConstr(x1[node+"_right"] + x2[node+"_right"] >= 1, "x_sum_right_"+node)
-                flow_penalty.add(x1[node+"_right"] + x2[node+"_right"] - 1, pen)
 
                 x1[node+"_left"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x1_left_"+node)
                 x2[node+"_left"] = model.addVar(vtype = GRB.INTEGER, lb = 0, ub = 1, name = "x2_left_"+node)
                 model.addConstr(C * x1[node+"_left"] >= source_left[node], "super_left_in_"+node)
                 model.addConstr(C * x2[node+"_left"] >= sink_left[node], "super_left_out_"+node)
-                model.addConstr(x1[node+"_left"] + x2[node+"_left"] >= 1, "x_sum_left_"+node)
-                flow_penalty.add(x1[node+"_left"] + x2[node+"_left"] - 1, pen)
+
+                if complexity >= 3:
+                    model.addConstr(x1[node+"_right"] + x2[node+"_right"] >= 1, "x_sum_right_"+node)
+                    flow_penalty.add(x1[node+"_right"] + x2[node+"_right"] - 1, pen)
+                    model.addConstr(x1[node+"_left"] + x2[node+"_left"] >= 1, "x_sum_left_"+node)
+                    flow_penalty.add(x1[node+"_left"] + x2[node+"_left"] - 1, pen)
 
             else:
 
@@ -152,13 +155,16 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile, source_prob 
                 model.addConstr(sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
                 model.addConstr(sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)
 
+        if complexity >= 2:
+            edge_flow_pen = sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params, cheap_source)) for e in edges)
+        else:
+            edge_flow_pen = gp.LinExpr()
         ### Objective function
         model.setObjective(sum(p_cn[node] for node in nodes) + source_prob * sum(source_left[node] + source_right[node] + sink_left[node] + sink_right[node] for node in double_sides) +
                            sum(cheap_source*source_left[node] + source_prob*source_right[node] + cheap_source*sink_left[node] + source_prob*sink_right[node] for node in free_left_side) +
                            sum(source_prob*source_left[node] + cheap_source*source_right[node] + source_prob*sink_left[node] + cheap_source*sink_right[node] for node in free_right_side) +
                            sum(cheap_source*source_left[node] + cheap_source*source_right[node] + cheap_source*sink_left[node] + cheap_source*sink_right[node] for node in free_both) +
-                           sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params, cheap_source)) for e in edges) +
-                           flow_penalty, GRB.MAXIMIZE)
+                           edge_flow_pen + flow_penalty, GRB.MAXIMIZE)
 
 
 
