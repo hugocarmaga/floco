@@ -174,46 +174,122 @@ def clip_nodes(nodes,edges):
     print("Nodes clipped in {}s".format(c_stop-c_start), file=sys.stderr)
 
 
-def select_read_alns(alns):
-    # Allow 1% overlap with previous alignments.
-    MAX_OVERLAP = 0.01
+# def filter_gaf(f):
+#     # Allow 1% overlap with previous alignments.
+#     MAX_OVERLAP = 0.01
 
-    # NOTE: Can use IntervalTree, but number of selected alignments is usually low, probably regular list will be faster.
-    covered = []
-    for rec in alns:
-        start = int(rec[2])
-        end = int(rec[3])
-        allowed_overlap = MAX_OVERLAP * (end - start)
-        for cstart, cend in covered:
-            overlap = min(end, cend) - max(start, cstart)
-            if overlap > allowed_overlap:
-                break
-        else:
-            # No breaks happened.
-            yield rec
-            covered.append((start, end))
+#     all_names = set()
+#     curr_name = None
+#     covered = []
+
+#     for line in f:
+#         columns = line.split('\t')
+#         name = columns[0]
+#         start = int(columns[2])
+#         end = int(columns[3])
+#         if name != curr_name:
+#             if name in all_names:
+#                 raise RuntimeError(f'Input alignments must be sorted by read name (see {name})')
+#             all_names.add(name)
+#             curr_name = name
+#             covered.clear()
+#             covered.append((start, end))
+#             yield columns
+
+#         else:
+#             # There already were alignments for this read.
+#             allowed_overlap = MAX_OVERLAP * (end - start)
+#             for cstart, cend in covered:
+#                 overlap = min(end, cend) - max(start, cstart)
+#                 if overlap > allowed_overlap:
+#                     break
+#             else:
+#                 # No breaks happened.
+#                 covered.append((start, end))
+#                 yield columns
+
+
+# def filter_gaf(f):
+#     # Split each read into 50 bins and then check for overlaps per bin.
+#     READ_BINS = 50
+
+#     all_names = set()
+#     curr_name = None
+#     curr_bin_size = None
+#     covered = np.zeros(READ_BINS, dtype=np.bool)
+
+#     for line in f:
+#         columns = line.split('\t')
+#         name = columns[0]
+#         read_len = int(columns[1])
+#         start = int(columns[2])
+#         end = int(columns[3])
+
+#         if name != curr_name:
+#             if name in all_names:
+#                 raise RuntimeError(f'Input alignments must be sorted by read name (see {name})')
+#             all_names.add(name)
+#             curr_name = name
+#             read_len = int(columns[1])
+#             # Ceiling division
+#             curr_bin_size = (read_len + READ_BINS - 1) // READ_BINS
+#             start_bin = start // curr_bin_size
+#             end_bin = (end - 1) // curr_bin_size + 1
+#             covered.fill(False)
+#             covered[start_bin:end_bin] = True
+#             yield columns
+
+#         else:
+#             start_bin = start // curr_bin_size
+#             end_bin = (end - 1) // curr_bin_size + 1
+#             if not np.any(covered[start_bin:end_bin]):
+#                 covered[start_bin:end_bin] = True
+#                 yield columns
+
+
+ONE = np.uint64(1)
+MAX_U64 = np.uint64(0xFFFFFFFFFFFFFFFF)
 
 
 def filter_gaf(f):
+    READ_BINS = 64
+
     all_names = set()
     curr_name = None
-    alns = []
+    curr_bin_size = None
+    covered = None
 
     for line in f:
-        columns = line.split('\t')
+        # For faster processing, only take columns that we need.
+        columns = line.split('\t', 9)
         name = columns[0]
+        read_len = int(columns[1])
+        start = int(columns[2])
+        end = int(columns[3])
+
         if name != curr_name:
-            if curr_name is not None:
-                yield from select_read_alns(alns)
-                alns.clear()
-                if name in all_names:
-                    raise RuntimeError(f'Input alignments must be sorted by read name (see {name})')
+            if name in all_names:
+                raise RuntimeError(f'Input alignments must be sorted by read name (see {name})')
             all_names.add(name)
             curr_name = name
-        alns.append(columns)
+            read_len = int(columns[1])
+            # Ceiling division
+            curr_bin_size = (read_len + READ_BINS - 1) // READ_BINS
 
-    if curr_name is not None:
-        yield from select_read_alns(alns)
+            start_bin = start // curr_bin_size
+            end_bin = (end - 1) // curr_bin_size + 1
+            nbits = end_bin - start_bin
+            covered = MAX_U64 if nbits == 64 else ((ONE << nbits) - 1) << start_bin
+            yield columns
+
+        else:
+            start_bin = start // curr_bin_size
+            end_bin = (end - 1) // curr_bin_size + 1
+            nbits = end_bin - start_bin
+            mask = MAX_U64 if nbits == 64 else ((ONE << nbits) - 1) << start_bin
+            if not (covered & mask):
+                covered |= mask
+                yield columns
 
 
 def calculate_covs(alignment_fname, nodes, edges):
