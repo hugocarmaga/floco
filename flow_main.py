@@ -101,18 +101,18 @@ def main():
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
         coverages, rlen_params = calculate_covs(args.graphalignment, nodes, edges)
         if args.params:
-            alpha, beta, params = pickle.load(open(args.params, 'rb'))
+            alpha, beta = pickle.load(open(args.params, 'rb'))
         else:
             bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
-            bins_array = compute_bins_array(bins_node)
-            alpha, beta, params = alpha_and_beta(bins_array, args.bin_size)
+            # bins_array = compute_bins_array(bins_node)
+            alpha, beta = alpha_and_beta(bins_node, args.bin_size)
             with open("dump-{}.parameters.tmp.pkl".format(args.outcov), 'wb') as p:
-                pickle.dump((alpha,beta,params), p)
+                pickle.dump((alpha,beta), p)
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
             pickle.dump((nodes,edges,coverages,rlen_params), f)
     elif args.pickle and args.params:
         nodes,edges,coverages,rlen_params = pickle.load(open(args.pickle, 'rb'))
-        alpha,beta,params = pickle.load(open(args.params, 'rb'))
+        alpha,beta = pickle.load(open(args.params, 'rb'))
 
     copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon, args.complexity)
     print("Writing results to output files!")

@@ -502,117 +502,144 @@ def compute_bins_array(bins_node):
                 curr_arr.append(prev_arr[j] + prev_arr[j + 1])
             prev_start = curr_start
 
+    # import gzip
+    # with gzip.open('bins.csv.gz', 'wt') as f:
+    #     f.write('level\tcov\n')
+    #     for i, bins in enumerate(bins_array):
+    #         for v in bins:
+    #             f.write(f'{i}\t{v}\n')
+
     b_stop = perf_counter()
     print("Bins array computed in {}s".format(b_stop-b_start), file=sys.stderr)
 
     return bins_array
 
-def estimate_mean_std(counts, bp_step, ROUND_BINS):
+def estimate_mean_std(counts, bp_step):
     '''Function to estimate mean and standard deviation per bin size.'''
+    EPSILON = 0.01
+    N_CN = 4
+    print("Estimating parameters", file=sys.stderr)
 
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', category=RuntimeWarning)
 
         def MLE_NBinom(parameters):
             # Changing parameters
-            m, sd = parameters[:2]
+            m, v = parameters[:2]
+            v = max(m * 1.00001, v)
+            r = m**2 / (v - m)
+            p = m / v
 
-            sd = max(sqrt(m)*1.0001, sd)
-            r = m**2 / (sd**2 - m)
-            p = m / sd**2
+            cs = np.log(parameters[2:] / np.sum(parameters[2:]))
+            rs = np.maximum(np.arange(N_CN), EPSILON) * r
 
-            s = sum(parameters[2:])
-            cs = np.log(parameters[2:]/s)
-            rs = np.maximum(np.arange(N_CN), 0.01) * r
-
-            sum_dist = [count * special.logsumexp(cs + stats.nbinom.logpmf(np.round((i + 1/2)*bp_step), rs, p))
+            sum_dist = [count * special.logsumexp(cs + stats.nbinom.logpmf(round((i + 0.5)*bp_step), rs, p))
                 for i, count in enumerate(counts)]
+            return min(1e30, -np.sum(sum_dist))
 
-            LL = min(1e30, -np.sum(sum_dist))
+        mode = float((np.argmax(counts) + 0.5) * bp_step)
 
-            # Save best LL and respective params
-            nonlocal params_max
-            nonlocal ll_max
-            if LL < ll_max:
-                ll_max = LL
-                params_max = tuple(parameters)
+        # Test case: CN = 1 for most of the nodes.
+        m0 = mode
+        v0 = m0 * m0 / 25
+        x0 = [m0, v0] + [0.005] * N_CN
+        x0[3] = 0.99
+        bounds = [(m0 / 1.5, m0 * 1.5), (v0 / 20, v0 * 20)] + [(0.0, 0.5)] * N_CN
+        bounds[3] = (0.5, 1.0)
+        print(x0, file=sys.stderr)
+        print(bounds, file=sys.stderr)
+        sol1 = optimize.minimize(MLE_NBinom, x0, bounds=bounds, method='Nelder-Mead')
+        print(f"Case I:  L = -{sol1.fun:.0f}, m = {sol1.x[0]:.2f}, sd = {sqrt(sol1.x[1]):.2f}, fractions: {sol1.x[2:]}",
+            file=sys.stderr)
 
-            return LL
+        # Test case: CN = 2 more prominent.
+        m0 = mode / 2
+        v0 = m0 * m0 / 25
+        x0 = [m0, v0] + [0.005] * N_CN
+        x0[3] = 0.1
+        x0[4] = 0.9
+        bounds = [(m0 / 1.5, m0 * 1.5), (v0 / 20, v0 * 20)] + [(0.0, 0.5)] * N_CN
+        bounds[3] = (0.05, 0.5)
+        bounds[4] = (0.5, 1.0)
+        print(x0, file=sys.stderr)
+        print(bounds, file=sys.stderr)
+        sol2 = optimize.minimize(MLE_NBinom, x0, bounds=bounds, method='Nelder-Mead')
+        print(f"Case II: L = -{sol2.fun:.0f}, m = {sol2.x[0]:.2f}, sd = {sqrt(sol2.x[1]):.2f}, fractions: {sol2.x[2:]}",
+            file=sys.stderr)
 
-        k_max = np.argmax(counts)
-        # Get initial values of m and sd
-        m0 = (k_max + 0.5) * bp_step
-        sd = m0/2
+        m, v = sol1.x[:2] if sol1.fun < sol2.fun else sol2.x[:2]
+        return m, sqrt(v)
 
-        params_max = None
-        ll_max = 1e30
 
-        s0 = m0 / 5
-        x0 = [m0, s0]
-        bounds = [(m0 / 5, m0 * 5), (s0 / 20, s0 * 20)]
-
-        # Create a vector of coefficients for each copy number (up to copy number N_CN-1)
-        N_CN = 4
-        for j in range(N_CN):
-            if j == 1:
-                bounds.append((0.5, 1.0))
-                x0.append(0.99)
-            else:
-                bounds.append((0.0, 0.25))
-                x0.append(0.005)
-
-        sol = optimize.minimize(MLE_NBinom, tuple(x0), bounds=tuple(bounds), method='Nelder-Mead')
-
-        m, sd = sol.x[:2]
-
-        return m, sd
-
-def alpha_and_beta(bins_array, sel_size = 100):
-    '''Get alpha and beta coefficients for NB parameters estimation.'''
-
+def alpha_and_beta(bins_node, bin_size = 100):
     p_start = perf_counter()
-    # Create dictionary of bins per size
-    cov = defaultdict(list)
-    for arr in bins_array:
-        cov[sel_size] += arr
-        sel_size *= 2
 
-    params = defaultdict()
+    bins = []
+    for curr_bins in bins_node.values():
+        bins.extend(curr_bins)
+    bins = np.array(bins)
+
     TOP_PERC = 3
-    ROUND_BINS = 4
+    ROUND_BINS = 5
+    thresh = np.quantile(bins, [TOP_PERC/100, (100 - TOP_PERC)/100])
+    bins = bins[(thresh[0] <= bins) & (bins <= thresh[1])]
+    bp_step = bin_size // ROUND_BINS
+    counts = np.bincount(np.round(bins / bp_step).astype(dtype=np.int64),
+        minlength=int(round(thresh[1])) // bp_step + 1)
+    a, b = estimate_mean_std(counts, bp_step)
 
-    # Iterate over all bin sizes
-    for size in cov:
-        bins = np.array(cov[size])
-        #sys.stderr.write(f"Starting bin {size}: {len(bins)}\n")
-
-        # Filter bins by quantile
-        thresh = np.quantile(bins, [TOP_PERC/100, (100 - TOP_PERC)/100])
-        bins = bins[(thresh[0] <= bins) & (bins <= thresh[1])]
-
-        # Use a step to round and generate counts for rounded coverages
-        bp_step = size // ROUND_BINS
-        counts = np.bincount(np.round(bins / bp_step).astype(dtype=np.int64), minlength=int(round(thresh[1])) // bp_step + 1)
-        # sys.stderr.write(f"{len(counts)} counts\n")
-
-        # Get mean and standard deviation from MLE
-        mean, sd = estimate_mean_std(counts, bp_step, ROUND_BINS)
-
-        # Add them to a dictionary
-        params[size] = [mean, sd]
-
-    sizes, vals = zip(*params.items())
-    means, sds = zip(*vals)
-
-    # Compute alpha and beta coefficients from linear regression
-    alpha = stats.linregress(sizes,means).slope
-    beta = stats.linregress(sizes,sds).slope
-
-    print("Alpha value: {}".format(alpha), file=sys.stderr)
-    print("Beta value: {}".format(beta), file=sys.stderr)
-
+    print("Alpha: {}, Beta: {}".format(a, b), file=sys.stderr)
     p_stop = perf_counter()
     print("Alpha and beta estimated in {}s".format(p_stop-p_start), file=sys.stderr)
+    return a, b
 
-    return alpha, beta, params
+
+# def alpha_and_beta(bins_array, sel_size = 100):
+#     '''Get alpha and beta coefficients for NB parameters estimation.'''
+
+#     p_start = perf_counter()
+#     # Create dictionary of bins per size
+#     cov = defaultdict(list)
+#     for arr in bins_array:
+#         cov[sel_size] += arr
+#         sel_size *= 2
+
+#     params = defaultdict()
+#     TOP_PERC = 3
+#     ROUND_BINS = 4
+
+#     # Iterate over all bin sizes
+#     for size in cov:
+#         bins = np.array(cov[size])
+#         #sys.stderr.write(f"Starting bin {size}: {len(bins)}\n")
+
+#         # Filter bins by quantile
+#         thresh = np.quantile(bins, [TOP_PERC/100, (100 - TOP_PERC)/100])
+#         bins = bins[(thresh[0] <= bins) & (bins <= thresh[1])]
+
+#         # Use a step to round and generate counts for rounded coverages
+#         bp_step = size // ROUND_BINS
+#         counts = np.bincount(np.round(bins / bp_step).astype(dtype=np.int64), minlength=int(round(thresh[1])) // bp_step + 1)
+#         # sys.stderr.write(f"{len(counts)} counts\n")
+
+#         # Get mean and standard deviation from MLE
+#         mean, sd = estimate_mean_std(counts, bp_step, ROUND_BINS)
+
+#         # Add them to a dictionary
+#         params[size] = [mean, sd]
+
+#     sizes, vals = zip(*params.items())
+#     means, sds = zip(*vals)
+
+#     # Compute alpha and beta coefficients from linear regression
+#     alpha = stats.linregress(sizes,means).slope
+#     beta = stats.linregress(sizes,sds).slope
+
+#     print("Alpha value: {}".format(alpha), file=sys.stderr)
+#     print("Beta value: {}".format(beta), file=sys.stderr)
+
+#     p_stop = perf_counter()
+#     print("Alpha and beta estimated in {}s".format(p_stop-p_start), file=sys.stderr)
+
+#     return alpha, beta, params
 
