@@ -592,6 +592,8 @@ def alpha_and_beta(bins_node, bin_size = 100):
     counts = np.bincount(np.round(bins / bp_step).astype(dtype=np.int64),
         minlength=int(round(thresh[1])) // bp_step + 1)
     a, b = estimate_mean_std(counts, bp_step)
+    a /= bin_size
+    b /= bin_size
 
     print("Alpha: {}, Beta: {}".format(a, b), file=sys.stderr)
     p_stop = perf_counter()

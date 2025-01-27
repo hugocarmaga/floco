@@ -37,7 +37,7 @@ def parse_arguments():
     parser.add_argument("-s", "--cheap-prob", type=int, default=-2, help="Probability for using the super edges when there's no other edge available. (default:%(default)s)")
     parser.add_argument("-e", "--epsilon", type=float, default=0.02, help="Epsilon value for adjusting CN0 counts to probabilities (default:%(default)s)")
     parser.add_argument("-b", "--bin-size", default=100, type=int, help="Set the bin size to use for the NB parameters' estimation. (default:%(default)s)")
-    parser.add_argument("-C", "--complexity", type=int, default=3, help="Model complexity (1-3): larger = slower and more accurate. (default: %(default)s)")
+    parser.add_argument("-C", "--complexity", type=int, default=2, help="Model complexity (1-3): larger = slower and more accurate. (default: %(default)s)")
     parser.add_argument("-d", "--pickle", type=str, help="Pickle dump with the data.", required=False)
     parser.add_argument("-m", "--params", type=str, help="Pickle dump with the parameters only. Must be provided together with -d.", required=False)
 
