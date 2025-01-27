@@ -546,11 +546,13 @@ def estimate_mean_std(counts, bp_step):
         x0[3] = 0.99
         bounds = [(m0 / 1.5, m0 * 1.5), (v0 / 20, v0 * 20)] + [(0.0, 0.5)] * N_CN
         bounds[3] = (0.5, 1.0)
-        print(x0, file=sys.stderr)
-        print(bounds, file=sys.stderr)
+
         sol1 = optimize.minimize(MLE_NBinom, x0, bounds=bounds, method='Nelder-Mead')
-        print(f"Case I:  L = -{sol1.fun:.0f}, m = {sol1.x[0]:.2f}, sd = {sqrt(sol1.x[1]):.2f}, fractions: {sol1.x[2:]}",
-            file=sys.stderr)
+        LL1 = sol1.fun
+        m1, v1 = sol1.x[:2]
+        cs1 = sol1.x[2:]
+        cs1 /= np.sum(cs1)
+        print(f"Case I:  L = -{LL1:.0f}, m = {m1:.2f}, sd = {sqrt(v1):.2f}, CN fractions: {cs1}", file=sys.stderr)
 
         # Test case: CN = 2 more prominent.
         m0 = mode / 2
@@ -561,14 +563,17 @@ def estimate_mean_std(counts, bp_step):
         bounds = [(m0 / 1.5, m0 * 1.5), (v0 / 20, v0 * 20)] + [(0.0, 0.5)] * N_CN
         bounds[3] = (0.05, 0.5)
         bounds[4] = (0.5, 1.0)
-        print(x0, file=sys.stderr)
-        print(bounds, file=sys.stderr)
         sol2 = optimize.minimize(MLE_NBinom, x0, bounds=bounds, method='Nelder-Mead')
-        print(f"Case II: L = -{sol2.fun:.0f}, m = {sol2.x[0]:.2f}, sd = {sqrt(sol2.x[1]):.2f}, fractions: {sol2.x[2:]}",
-            file=sys.stderr)
+        LL2 = sol2.fun
+        m2, v2 = sol2.x[:2]
+        cs2 = sol2.x[2:]
+        cs2 /= np.sum(cs2)
+        print(f"Case II: L = -{LL2:.0f}, m = {m2:.2f}, sd = {sqrt(v2):.2f}, CN fractions: {cs2}", file=sys.stderr)
 
-        m, v = sol1.x[:2] if sol1.fun < sol2.fun else sol2.x[:2]
-        return m, sqrt(v)
+        if LL1 <= LL2:
+            return m1, sqrt(v1)
+        else:
+            return m2, sqrt(v2)
 
 
 def alpha_and_beta(bins_node, bin_size = 100):
