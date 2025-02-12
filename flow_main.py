@@ -35,8 +35,9 @@ def parse_arguments():
     parser.add_argument("-p", "--ploidy", type=int, default=2, help="Ploidy of the dataset. (default:%(default)s)")
     parser.add_argument("-S", "--super-prob", type=int, default=-10, help="Probability for using the super edges when there are other edges available. (default:%(default)s)")
     parser.add_argument("-s", "--cheap-prob", type=int, default=-2, help="Probability for using the super edges when there's no other edge available. (default:%(default)s)")
-    parser.add_argument("-e", "--epsilon", type=float, default=0.3, help="Epsilon value for adjusting CN0 counts to probabilities (default:%(default)s)")
+    parser.add_argument("-e", "--epsilon", type=float, default=0.02, help="Epsilon value for adjusting CN0 counts to probabilities (default:%(default)s)")
     parser.add_argument("-b", "--bin-size", default=100, type=int, help="Set the bin size to use for the NB parameters' estimation. (default:%(default)s)")
+    parser.add_argument("-C", "--complexity", type=int, default=2, help="Model complexity (1-3): larger = slower and more accurate. (default: %(default)s)")
     parser.add_argument("-d", "--pickle", type=str, help="Pickle dump with the data.", required=False)
     parser.add_argument("-m", "--params", type=str, help="Pickle dump with the parameters only. Must be provided together with -d.", required=False)
 
@@ -100,20 +101,20 @@ def main():
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
         coverages, rlen_params = calculate_covs(args.graphalignment, nodes, edges)
         if args.params:
-            alpha, beta, params = pickle.load(open(args.params, 'rb'))
+            alpha, beta = pickle.load(open(args.params, 'rb'))
         else:
             bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
-            bins_array = compute_bins_array(bins_node)
-            alpha, beta, params = alpha_and_beta(bins_array, args.bin_size)
+            # bins_array = compute_bins_array(bins_node)
+            alpha, beta = alpha_and_beta(bins_node, args.bin_size)
             with open("dump-{}.parameters.tmp.pkl".format(args.outcov), 'wb') as p:
-                pickle.dump((alpha,beta,params), p)
+                pickle.dump((alpha,beta), p)
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
             pickle.dump((nodes,edges,coverages,rlen_params), f)
     elif args.pickle and args.params:
         nodes,edges,coverages,rlen_params = pickle.load(open(args.pickle, 'rb'))
-        alpha,beta,params = pickle.load(open(args.params, 'rb'))
+        alpha,beta = pickle.load(open(args.params, 'rb'))
 
-    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon)
+    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon, args.complexity)
     print("Writing results to output files!")
     write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
     write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
