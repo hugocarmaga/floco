@@ -272,21 +272,20 @@ def filter_gaf(f):
                 raise RuntimeError(f'Input alignments must be sorted by read name (see {name})')
             all_names.add(name)
             curr_name = name
-            read_len = int(columns[1])
             # Ceiling division
             curr_bin_size = (read_len + READ_BINS - 1) // READ_BINS
 
             start_bin = start // curr_bin_size
             end_bin = (end - 1) // curr_bin_size + 1
             nbits = end_bin - start_bin
-            covered = MAX_U64 if nbits == 64 else ((ONE << nbits) - 1) << start_bin
+            covered = MAX_U64 if nbits == 64 else np.uint64((ONE << np.uint64(nbits)) - 1) << np.uint64(start_bin)
             yield columns
 
         else:
             start_bin = start // curr_bin_size
             end_bin = (end - 1) // curr_bin_size + 1
             nbits = end_bin - start_bin
-            mask = MAX_U64 if nbits == 64 else ((ONE << nbits) - 1) << start_bin
+            mask = MAX_U64 if nbits == 64 else np.uint64((ONE << np.uint64(nbits)) - 1) << np.uint64(start_bin)
             if not (covered & mask):
                 covered |= mask
                 yield columns
