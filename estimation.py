@@ -464,11 +464,15 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
     for node in nodes_to_bin:
         for (bin_size, cov_bins) in nodes[node].bins:
             if bin_size == sel_size:
-                # Keep only nodes with 10 bins or more and with at least one bin with a coverage bigger than the bin size
+                # Keep only nodes with at least one bin with a coverage bigger than the bin size
+                counter=0
                 if np.any(cov_bins >= sel_size):
+                    counter+=1
                     bp_cov_per_node[node] = cov_bins
                     mean_per_node[node] = np.mean(cov_bins)   # Compute the mean bin coverage per node
 
+    print("There are {} nodes with at least one bin fully covered".format(counter))
+    print(mean_per_node)
     # Remove top and bottom 3% of nodes, based on the mean bin coverage. Then, remove bins with coverage bigger or equal to 3 times the median bin coverage of the node.
     TOP_PERC = 3
     thresh = np.quantile(np.array(list(mean_per_node.values())), [TOP_PERC/100, (100 - TOP_PERC)/100])
