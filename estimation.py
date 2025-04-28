@@ -461,11 +461,11 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
     mean_per_node = defaultdict()  # Dictionary to save the average bin coverage for all the binned nodes
 
     # Iterate over binned_nodes
+    counter=0
     for node in nodes_to_bin:
         for (bin_size, cov_bins) in nodes[node].bins:
             if bin_size == sel_size:
                 # Keep only nodes with at least one bin with a coverage bigger than the bin size
-                counter=0
                 if np.any(cov_bins >= sel_size):
                     counter+=1
                     bp_cov_per_node[node] = cov_bins
