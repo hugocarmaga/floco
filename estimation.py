@@ -471,8 +471,8 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
                     bp_cov_per_node[node] = cov_bins
                     mean_per_node[node] = np.mean(cov_bins)   # Compute the mean bin coverage per node
 
-    print("There are {} nodes with at least one bin fully covered".format(counter))
-    print(mean_per_node)
+    # print("There are {} nodes with at least one bin fully covered".format(counter))
+    # print(mean_per_node)
     # Remove top and bottom 3% of nodes, based on the mean bin coverage. Then, remove bins with coverage bigger or equal to 3 times the median bin coverage of the node.
     TOP_PERC = 3
     thresh = np.quantile(np.array(list(mean_per_node.values())), [TOP_PERC/100, (100 - TOP_PERC)/100])
@@ -517,10 +517,10 @@ def compute_bins_array(bins_node):
 
     return bins_array
 
-def estimate_mean_std(counts, bp_step):
+def estimate_mean_std_at_ploidy(counts, bp_step, input_ploidy):
     '''Function to estimate mean and standard deviation per bin size.'''
     EPSILON = 0.01
-    N_CN = 4
+    N_CN = max(4, input_ploidy + 2)
     print("Estimating parameters", file=sys.stderr)
 
     with warnings.catch_warnings():
@@ -543,43 +543,24 @@ def estimate_mean_std(counts, bp_step):
         mode = float((np.argmax(counts) + 0.5) * bp_step)
 
         # Test case: CN = 1 for most of the nodes.
-        m0 = mode
+        m0 = mode / input_ploidy
         v0 = m0 * m0 / 25
-        x0 = [m0, v0] + [0.005] * N_CN
-        x0[3] = 0.99
-        bounds = [(m0 / 1.5, m0 * 1.5), (v0 / 20, v0 * 20)] + [(0.0, 0.5)] * N_CN
-        bounds[3] = (0.5, 1.0)
+        x0 = [m0, v0] + [0.1] * N_CN
+        x0[2 + input_ploidy] = 0.9
+        bounds = [(m0 / 1.5, m0 * 1.5), (v0 / 20, v0 * 20)] + [(0.0, 0.45)] * N_CN
+        bounds[2 + input_ploidy] = (0.5, 1.0)
 
-        sol1 = optimize.minimize(MLE_NBinom, x0, bounds=bounds, method='Nelder-Mead')
-        LL1 = sol1.fun
-        m1, v1 = sol1.x[:2]
-        cs1 = sol1.x[2:]
-        cs1 /= np.sum(cs1)
-        print(f"Case I:  L = -{LL1:.0f}, m = {m1:.2f}, sd = {sqrt(v1):.2f}, CN fractions: {cs1}", file=sys.stderr)
+        sol = optimize.minimize(MLE_NBinom, x0, bounds=bounds, method='Nelder-Mead')
+        LL = sol.fun
+        m, v = sol.x[:2]
+        cs = sol.x[2:]
+        cs /= np.sum(cs)
+        print(f"Ploidy {input_ploidy}:  L = -{LL:.0f}, m = {m:.2f}, sd = {sqrt(v):.2f}, CN fractions: {cs}", file=sys.stderr)
 
-        # Test case: CN = 2 more prominent.
-        m0 = mode / 2
-        v0 = m0 * m0 / 25
-        x0 = [m0, v0] + [0.005] * N_CN
-        x0[3] = 0.1
-        x0[4] = 0.9
-        bounds = [(m0 / 1.5, m0 * 1.5), (v0 / 20, v0 * 20)] + [(0.0, 0.5)] * N_CN
-        bounds[3] = (0.05, 0.5)
-        bounds[4] = (0.5, 1.0)
-        sol2 = optimize.minimize(MLE_NBinom, x0, bounds=bounds, method='Nelder-Mead')
-        LL2 = sol2.fun
-        m2, v2 = sol2.x[:2]
-        cs2 = sol2.x[2:]
-        cs2 /= np.sum(cs2)
-        print(f"Case II: L = -{LL2:.0f}, m = {m2:.2f}, sd = {sqrt(v2):.2f}, CN fractions: {cs2}", file=sys.stderr)
-
-        if LL1 <= LL2:
-            return m1, sqrt(v1)
-        else:
-            return m2, sqrt(v2)
+        return LL, m, sqrt(v)
 
 
-def alpha_and_beta(bins_node, bin_size = 100):
+def alpha_and_beta(bins_node, bin_size = 100, ploidies = [1,2]):
     p_start = perf_counter()
 
     bins = []
@@ -594,14 +575,20 @@ def alpha_and_beta(bins_node, bin_size = 100):
     bp_step = bin_size // ROUND_BINS
     counts = np.bincount(np.round(bins / bp_step).astype(dtype=np.int64),
         minlength=int(round(thresh[1])) // bp_step + 1)
-    a, b = estimate_mean_std(counts, bp_step)
-    a /= bin_size
-    b /= bin_size
+    best_ll = -np.inf
+    best_a = -np.inf
+    best_b = -np.inf
+    for ploidy in ploidies:
+        ll, a, b = estimate_mean_std_at_ploidy(counts, bp_step, ploidy)
+        if ll > best_ll:
+            best_ll, best_a, best_b = ll, a, b
+    best_a /= bin_size
+    best_b /= bin_size
 
-    print("Alpha: {}, Beta: {}".format(a, b), file=sys.stderr)
+    print("Alpha: {}, Beta: {}".format(best_a, best_b), file=sys.stderr)
     p_stop = perf_counter()
     print("Alpha and beta estimated in {}s".format(p_stop-p_start), file=sys.stderr)
-    return a, b
+    return best_a, best_b
 
 
 # def alpha_and_beta(bins_array, sel_size = 100):

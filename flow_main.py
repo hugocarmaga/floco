@@ -32,7 +32,7 @@ def parse_arguments():
     parser.add_argument("-g", "--graph", help="The GFA file.", required=True)
     parser.add_argument("-a", "--graphalignment", help="The GAF file.", required=False)
     parser.add_argument("-c", "--outcov", help="The name for the output csv file with the node coverages", required=True)
-    parser.add_argument("-p", "--ploidy", type=int, default=2, help="Ploidy of the dataset. (default:%(default)s)")
+    parser.add_argument("-p", "--ploidy", type=int, default=[1,2], nargs="+", help="Ploidy of the dataset. (default:%(default)s)")
     parser.add_argument("-S", "--super-prob", type=int, default=-10, help="Probability for using the super edges when there are other edges available. (default:%(default)s)")
     parser.add_argument("-s", "--cheap-prob", type=int, default=-2, help="Probability for using the super edges when there's no other edge available. (default:%(default)s)")
     parser.add_argument("-e", "--epsilon", type=float, default=0.02, help="Epsilon value for adjusting CN0 counts to probabilities (default:%(default)s)")
