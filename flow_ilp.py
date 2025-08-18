@@ -121,6 +121,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
 
                 likeliest_CNs[node] = lower_bound + np.argmax(y)
 
+                if node == "utig4-1211": print("Probabilites to PWL: {}".format(y))
                 cn[node] = model.addVar(vtype = GRB.INTEGER, lb = lower_bound, ub = upper_bound - 1,  name = "cn_"+node)
                 model.addGenConstrPWL(cn[node], p_cn[node], x, y, "PWLConstr_"+node)
 
