@@ -35,7 +35,7 @@ def cn_probs(alpha, beta, epsilon,
     max_prob = -np.inf
 
     pres = False
-    if full_cov == 74100462 and full_length == 10076706:
+    if full_cov == 43825868 and full_length == 14178334:
         pres = True
 
     start_cn = int(np.round(full_cov / (full_length * alpha)))
