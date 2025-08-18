@@ -34,7 +34,11 @@ def cn_probs(alpha, beta, epsilon,
     probs = deque()
     max_prob = -np.inf
 
+    if full_cov == 74100462 and full_length == 10076706:
+        pres = True
+
     start_cn = int(np.round(full_cov / (full_length * alpha)))
+    if pres: print("Starting CN is: {}".format(start_cn))
     for c in range(start_cn, start_cn + MAX_EXTENSION):
         c = max(c, epsilon)
         prob = np.sum(nb.logpmf(bin_coverages, r * c, p))
@@ -42,6 +46,10 @@ def cn_probs(alpha, beta, epsilon,
             break
         max_prob = max(prob, max_prob)
         probs.append(prob)
+        if pres:
+            print("For c: {}".format(c))
+            print("Max prob: {}".format(max_prob))
+            print("Probs: {}".format(probs))
 
     lower_bound = start_cn
     for c in range(start_cn - 1, -1, -1):
@@ -52,9 +60,15 @@ def cn_probs(alpha, beta, epsilon,
         max_prob = max(prob, max_prob)
         probs.appendleft(prob)
         lower_bound -= 1
+        if pres:
+            print("For c: {}".format(c))
+            print("Max prob: {}".format(max_prob))
+            print("Probs: {}".format(probs))
+            print("Lower bound: {}".format(lower_bound))
 
     probs = np.array(probs)
     probs -= logsumexp(probs)
+    if pres: print("Final probs: {}".format(probs))
     return lower_bound, probs
 
 
