@@ -1,6 +1,6 @@
 from scipy.stats import nbinom as nb
 from scipy.stats import skewnorm as sn
-from scipy.stats import geom as gm
+from scipy.stats import expon as ep
 from scipy.special import logsumexp
 import numpy as np
 from math import log
@@ -15,7 +15,8 @@ def ab_to_rp(m, alpha, beta, epsilon):
     r = mu ** 2 / (v - mu)
     p = mu / v
 
-    p0 = 1 / (mu * epsilon)
+    p0 = p / (r * epsilon * (1 - p))
+
     return r, p, p0
 
 
@@ -37,9 +38,7 @@ def cn_probs(alpha, beta, epsilon,
     probs = deque()
     max_prob = -np.inf
 
-    bin_coverages = [b + 1 for b in bin_coverages]
-    print("p0 value is: {}".format(p0))
-    print("Bin coverages: {}".format(bin_coverages))
+    bin_coverages = np.array(bin_coverages)
 
     pres = False
     if full_cov == 43825868 and full_length == 14178334:
@@ -49,7 +48,7 @@ def cn_probs(alpha, beta, epsilon,
     if pres: print("Starting CN is: {}".format(start_cn))
     for c in range(start_cn, start_cn + MAX_EXTENSION):
         if c < 1:
-            prob = np.sum(gm.logpmf(bin_coverages, p0, loc = -1))
+            prob = np.sum([logsumexp((ep.logsf(b, scale = 1 / p0), ep.logsf(b + 1, scale = 1 / p0)), axis=0) for b in bin_coverages])
         else:
             prob = np.sum(nb.logpmf(bin_coverages, r * c, p))
         if c - start_cn > MIN_EXTENSION and prob + diff_cutoff < max_prob:
@@ -64,7 +63,7 @@ def cn_probs(alpha, beta, epsilon,
     lower_bound = start_cn
     for c in range(start_cn - 1, -1, -1):
         if c < 1:
-            prob = np.sum(gm.logpmf(bin_coverages, p0, loc = -1))
+            prob = np.sum([logsumexp((ep.logsf(b, scale = 1 / p0), ep.logsf(b + 1, scale = 1 / p0)), axis=0) for b in bin_coverages])
         else:
             prob = np.sum(nb.logpmf(bin_coverages, r * c, p))
         if start_cn - c > MIN_EXTENSION and prob + diff_cutoff < max_prob:
@@ -81,8 +80,8 @@ def cn_probs(alpha, beta, epsilon,
     probs = np.array(probs)
     print("Unnormalized probs: {}".format(probs))
     probs -= logsumexp(probs)
-    print("Final probs: {}".format(probs))
     if pres:
+        print("Final probs: {}".format(probs))
         print("Bin coverages: {}".format(bin_coverages))
     return lower_bound, probs
 
