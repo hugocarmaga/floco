@@ -34,7 +34,6 @@ def cn_probs(alpha, beta, epsilon,
     MAX_EXTENSION = 101
 
     r, p, p0 = ab_to_rp(bin_size, alpha, beta, epsilon)
-    print(p0)
     probs = deque()
     max_prob = -np.inf
 
@@ -76,6 +75,7 @@ def cn_probs(alpha, beta, epsilon,
             print("Lower bound: {}".format(lower_bound))
 
     probs = np.array(probs)
+    print("Unnormalized probs: {}".format(probs))
     probs -= logsumexp(probs)
     print("Final probs: {}".format(probs))
     if pres:
