@@ -79,7 +79,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
         diff_cutoff = abs(4 * source_prob)
         subsampling_dist = max(1000, scipy.stats.skewnorm.mean(*rlen_params))
         flow_penalty = gp.LinExpr()
-
+        print("Flow penalty done!")
         for k1 in edges:
             '''Iterate over the edges and add them to the correct side of the respective nodes'''
             r_edges_out[edges[k1].node1].append(edges[k1]) if edges[k1].strand1 else l_edges_out[edges[k1].node1].append(edges[k1])
@@ -96,6 +96,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
                 model.addConstr(x1[k1] + x2[k1] >= 1, "x_sum_flow_"+k1)
                 flow_penalty.add(x1[k1] + x2[k1] - 1, pen)
 
+        print("Edge constraints added!")
         # Create variable for later statistics on copy number concordance with the individual node probability
         likeliest_CNs = {}
 
@@ -112,7 +113,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
                         free_left_side[node] = node
                     else:
                         free_both[node] = node
-
+                print("Reading node {}".format(node))
                 lower_bound, y = bounds_and_probs(nodes[node].clipped_len(), coverages[node], nodes[node].bins,
                     alpha, beta, epsilon, subsampling_dist, diff_cutoff)
                 upper_bound = lower_bound + len(y)
