@@ -37,6 +37,8 @@ def cn_probs(alpha, beta, epsilon,
     probs = deque()
     max_prob = -np.inf
 
+    bin_coverages = [b + 1 for b in bin_coverages]
+
     pres = False
     if full_cov == 43825868 and full_length == 14178334:
         pres = True
