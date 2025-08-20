@@ -34,6 +34,7 @@ def cn_probs(alpha, beta, epsilon,
     MAX_EXTENSION = 101
 
     r, p, p0 = ab_to_rp(bin_size, alpha, beta, epsilon)
+    print(p0)
     probs = deque()
     max_prob = -np.inf
 
