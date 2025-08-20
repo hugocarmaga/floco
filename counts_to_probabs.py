@@ -1,5 +1,6 @@
 from scipy.stats import nbinom as nb
 from scipy.stats import skewnorm as sn
+from scipy.stats import geom as gm
 from scipy.special import logsumexp
 import numpy as np
 from math import log
@@ -7,13 +8,15 @@ import random
 from collections import deque
 import itertools
 
-def ab_to_rp(m, alpha, beta):
+def ab_to_rp(m, alpha, beta, epsilon):
     mu = alpha * m
     v = max((beta * m) ** 2, mu + 1e-6)
 
     r = mu ** 2 / (v - mu)
     p = mu / v
-    return r, p
+
+    p0 = 1 / (mu * epsilon)
+    return r, p, p0
 
 
 def cn_probs(alpha, beta, epsilon,
@@ -30,7 +33,7 @@ def cn_probs(alpha, beta, epsilon,
     MIN_EXTENSION = 1
     MAX_EXTENSION = 101
 
-    r, p = ab_to_rp(bin_size, alpha, beta)
+    r, p, p0 = ab_to_rp(bin_size, alpha, beta)
     probs = deque()
     max_prob = -np.inf
 
@@ -41,8 +44,10 @@ def cn_probs(alpha, beta, epsilon,
     start_cn = int(np.round(full_cov / (full_length * alpha)))
     if pres: print("Starting CN is: {}".format(start_cn))
     for c in range(start_cn, start_cn + MAX_EXTENSION):
-        c = max(c, epsilon)
-        prob = np.sum(nb.logpmf(bin_coverages, r * c, p))
+        if c < 1:
+            prob = np.sum(gm.logpmf(bin_coverages, p0))
+        else:
+            prob = np.sum(nb.logpmf(bin_coverages, r * c, p))
         if c - start_cn > MIN_EXTENSION and prob + diff_cutoff < max_prob:
             break
         max_prob = max(prob, max_prob)
@@ -54,8 +59,10 @@ def cn_probs(alpha, beta, epsilon,
 
     lower_bound = start_cn
     for c in range(start_cn - 1, -1, -1):
-        c = max(c, epsilon)
-        prob = np.sum(nb.logpmf(bin_coverages, r * c, p))
+        if c < 1:
+            prob = np.sum(gm.logpmf(bin_coverages, p0))
+        else:
+            prob = np.sum(nb.logpmf(bin_coverages, r * c, p))
         if start_cn - c > MIN_EXTENSION and prob + diff_cutoff < max_prob:
             break
         max_prob = max(prob, max_prob)
