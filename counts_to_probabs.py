@@ -38,6 +38,8 @@ def cn_probs(alpha, beta, epsilon,
     max_prob = -np.inf
 
     bin_coverages = [b + 1 for b in bin_coverages]
+    print("p0 value is: {}".format(p0))
+    print("Bin coverages: {}".format(bin_coverages))
 
     pres = False
     if full_cov == 43825868 and full_length == 14178334:
