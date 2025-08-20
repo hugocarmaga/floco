@@ -77,8 +77,8 @@ def cn_probs(alpha, beta, epsilon,
 
     probs = np.array(probs)
     probs -= logsumexp(probs)
+    print("Final probs: {}".format(probs))
     if pres:
-        print("Final probs: {}".format(probs))
         print("Bin coverages: {}".format(bin_coverages))
     return lower_bound, probs
 
