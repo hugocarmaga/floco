@@ -76,7 +76,6 @@ def cn_probs(alpha, beta, epsilon,
             print("Lower bound: {}".format(lower_bound))
 
     probs = np.array(probs)
-    print("Unnormalized probs: {}".format(probs))
     probs -= logsumexp(probs)
     if pres:
         print("Final probs: {}".format(probs))
