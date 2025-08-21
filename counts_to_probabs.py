@@ -38,6 +38,8 @@ def cn_probs(alpha, beta, epsilon,
     probs = deque()
     max_prob = -np.inf
 
+    bin_coverages = np.array(bin_coverages)
+
     pres = False
     if full_cov == 43825868 and full_length == 14178334:
         pres = True
@@ -46,7 +48,7 @@ def cn_probs(alpha, beta, epsilon,
     if pres: print("Starting CN is: {}".format(start_cn))
     for c in range(start_cn, start_cn + MAX_EXTENSION):
         if c < 1:
-            prob = np.sum([logsumexp((ep.logsf(binc, scale = 1 / p0), ep.logsf(binc + 1, scale = 1 / p0)), axis=0, b=(1,-1)) for binc in bin_coverages])
+            prob = - p0 * bin_coverages.sum() + bin_coverages.size * np.log(1 - np.exp(- p0))
         else:
             prob = np.sum(nb.logpmf(bin_coverages, r * c, p))
         if c - start_cn > MIN_EXTENSION and prob + diff_cutoff < max_prob:
@@ -61,7 +63,7 @@ def cn_probs(alpha, beta, epsilon,
     lower_bound = start_cn
     for c in range(start_cn - 1, -1, -1):
         if c < 1:
-            prob = np.sum([logsumexp((ep.logsf(binc, scale = 1 / p0), ep.logsf(binc + 1, scale = 1 / p0)), axis=0, b=(1,-1)) for binc in bin_coverages])
+            prob = -p0 * bin_coverages.sum() + bin_coverages.size * np.log(1 - np.exp(-p0))
         else:
             prob = np.sum(nb.logpmf(bin_coverages, r * c, p))
         if start_cn - c > MIN_EXTENSION and prob + diff_cutoff < max_prob:
