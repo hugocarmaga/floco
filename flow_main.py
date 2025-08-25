@@ -105,7 +105,7 @@ def main():
         else:
             bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
             # bins_array = compute_bins_array(bins_node)
-            alpha, beta = alpha_and_beta(bins_node, args.bin_size)
+            alpha, beta = alpha_and_beta(bins_node, args.bin_size, args.ploidy)
             with open("dump-{}.parameters.tmp.pkl".format(args.outcov), 'wb') as p:
                 pickle.dump((alpha,beta), p)
         with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
