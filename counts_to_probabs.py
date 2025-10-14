@@ -82,3 +82,12 @@ def cn_probs(alpha, beta, epsilon,
         print("Final probs: {}".format(probs))
         print("Bin coverages: {}".format(bin_coverages))
     return lower_bound, probs
+
+def edge_cov_pen(d, alpha, ovlp, rlen_params, penalty):
+    # Compute p_e0 and p_e1 for each edge, taking their "coverage" as an input
+    skn = sn(*rlen_params)
+    if d < np.floor(alpha * skn.sf(ovlp) / 4):
+        return penalty
+
+    else:
+        return 0
