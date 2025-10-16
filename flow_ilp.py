@@ -174,6 +174,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
         i_stop = perf_counter()
         print("ILP model generated and saved in {}s".format(i_stop-i_start), file=sys.stderr)
 
+        model.setParam('Threads', 1)
         o_start = perf_counter()
         model.optimize()
         o_stop = perf_counter()
