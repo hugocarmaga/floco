@@ -505,17 +505,17 @@ def compute_bins_array(bins_node):
                 curr_arr.append(prev_arr[j] + prev_arr[j + 1])
             prev_start = curr_start
 
-    # import gzip
-    # with gzip.open('bins.csv.gz', 'wt') as f:
-    #     f.write('level\tcov\n')
-    #     for i, bins in enumerate(bins_array):
-    #         for v in bins:
-    #             f.write(f'{i}\t{v}\n')
+    import gzip
+    with gzip.open('bins.csv.gz', 'wt') as f:
+        f.write('#Size\tCoverage\n')
+        for i, bins in enumerate(bins_array):
+            for v in bins:
+                f.write(f'{(i+1)*100}\t{v}\n')
 
     b_stop = perf_counter()
     print("Bins array computed in {}s".format(b_stop-b_start), file=sys.stderr)
 
-    return bins_array
+    #return bins_array
 
 def estimate_mean_std_at_ploidy(counts, bp_step, input_ploidy):
     '''Function to estimate mean and standard deviation per bin size.'''

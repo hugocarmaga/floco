@@ -104,21 +104,21 @@ def main():
             alpha, beta = pickle.load(open(args.params, 'rb'))
         else:
             bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
-            # bins_array = compute_bins_array(bins_node)
-            alpha, beta = alpha_and_beta(bins_node, args.bin_size, args.ploidy)
-            with open("dump-{}.parameters.tmp.pkl".format(args.outcov), 'wb') as p:
-                pickle.dump((alpha,beta), p)
-        with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
-            pickle.dump((nodes,edges,coverages,rlen_params), f)
-    elif args.pickle and args.params:
-        nodes,edges,coverages,rlen_params = pickle.load(open(args.pickle, 'rb'))
-        alpha,beta = pickle.load(open(args.params, 'rb'))
+            compute_bins_array(bins_node)
+    #         alpha, beta = alpha_and_beta(bins_node, args.bin_size, args.ploidy)
+    #         with open("dump-{}.parameters.tmp.pkl".format(args.outcov), 'wb') as p:
+    #             pickle.dump((alpha,beta), p)
+    #     with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
+    #         pickle.dump((nodes,edges,coverages,rlen_params), f)
+    # elif args.pickle and args.params:
+    #     nodes,edges,coverages,rlen_params = pickle.load(open(args.pickle, 'rb'))
+    #     alpha,beta = pickle.load(open(args.params, 'rb'))
 
-    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon, args.complexity)
-    print("Writing results to output files!")
-    write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
-    write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
-    write_solutionmetrics(concordance, alpha, beta, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
+    # copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon, args.complexity)
+    # print("Writing results to output files!")
+    # write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
+    # write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
+    # write_solutionmetrics(concordance, alpha, beta, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
 
 if __name__ == "__main__":
     main()
