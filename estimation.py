@@ -508,9 +508,11 @@ def compute_bins_array(bins_node):
     import gzip
     with gzip.open('bins.csv.gz', 'wt') as f:
         f.write('#Size\tCoverage\n')
+        j = 1
         for i, bins in enumerate(bins_array):
             for v in bins:
-                f.write(f'{(i+1)*100}\t{v}\n')
+                f.write(f'{j*100}\t{v}\n')
+            j *= 2
 
     b_stop = perf_counter()
     print("Bins array computed in {}s".format(b_stop-b_start), file=sys.stderr)
