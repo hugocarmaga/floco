@@ -174,79 +174,6 @@ def clip_nodes(nodes,edges):
     print("Nodes clipped in {}s".format(c_stop-c_start), file=sys.stderr)
 
 
-# def filter_gaf(f):
-#     # Allow 1% overlap with previous alignments.
-#     MAX_OVERLAP = 0.01
-
-#     all_names = set()
-#     curr_name = None
-#     covered = []
-
-#     for line in f:
-#         columns = line.split('\t')
-#         name = columns[0]
-#         start = int(columns[2])
-#         end = int(columns[3])
-#         if name != curr_name:
-#             if name in all_names:
-#                 raise RuntimeError(f'Input alignments must be sorted by read name (see {name})')
-#             all_names.add(name)
-#             curr_name = name
-#             covered.clear()
-#             covered.append((start, end))
-#             yield columns
-
-#         else:
-#             # There already were alignments for this read.
-#             allowed_overlap = MAX_OVERLAP * (end - start)
-#             for cstart, cend in covered:
-#                 overlap = min(end, cend) - max(start, cstart)
-#                 if overlap > allowed_overlap:
-#                     break
-#             else:
-#                 # No breaks happened.
-#                 covered.append((start, end))
-#                 yield columns
-
-
-# def filter_gaf(f):
-#     # Split each read into 50 bins and then check for overlaps per bin.
-#     READ_BINS = 50
-
-#     all_names = set()
-#     curr_name = None
-#     curr_bin_size = None
-#     covered = np.zeros(READ_BINS, dtype=np.bool)
-
-#     for line in f:
-#         columns = line.split('\t')
-#         name = columns[0]
-#         read_len = int(columns[1])
-#         start = int(columns[2])
-#         end = int(columns[3])
-
-#         if name != curr_name:
-#             if name in all_names:
-#                 raise RuntimeError(f'Input alignments must be sorted by read name (see {name})')
-#             all_names.add(name)
-#             curr_name = name
-#             read_len = int(columns[1])
-#             # Ceiling division
-#             curr_bin_size = (read_len + READ_BINS - 1) // READ_BINS
-#             start_bin = start // curr_bin_size
-#             end_bin = (end - 1) // curr_bin_size + 1
-#             covered.fill(False)
-#             covered[start_bin:end_bin] = True
-#             yield columns
-
-#         else:
-#             start_bin = start // curr_bin_size
-#             end_bin = (end - 1) // curr_bin_size + 1
-#             if not np.any(covered[start_bin:end_bin]):
-#                 covered[start_bin:end_bin] = True
-#                 yield columns
-
-
 ONE = np.uint64(1)
 MAX_U64 = np.uint64(0xFFFFFFFFFFFFFFFF)
 
@@ -471,8 +398,6 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
                     bp_cov_per_node[node] = cov_bins
                     mean_per_node[node] = np.mean(cov_bins)   # Compute the mean bin coverage per node
 
-    # print("There are {} nodes with at least one bin fully covered".format(counter))
-    # print(mean_per_node)
     # Remove top and bottom 3% of nodes, based on the mean bin coverage. Then, remove bins with coverage bigger or equal to 3 times the median bin coverage of the node.
     TOP_PERC = 3
     thresh = np.quantile(np.array(list(mean_per_node.values())), [TOP_PERC/100, (100 - TOP_PERC)/100])
@@ -483,41 +408,6 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
 
     return bins_node
 
-def compute_bins_array(bins_node):
-    b_start = perf_counter()
-    N_POINTS = 7
-    bins_array = [[] for _ in range(N_POINTS)]
-    for node_bins in bins_node.values():
-        prev_start = len(bins_array[0])
-        bins_array[0].extend(node_bins)
-
-        for i in range(1, N_POINTS):
-            prev_arr = bins_array[i - 1]
-            curr_arr = bins_array[i]
-            curr_start = len(curr_arr)
-
-            prev_len = len(prev_arr)
-            prev_stop = prev_len - (prev_len - prev_start) % 2
-            if prev_start == prev_stop:
-                break
-
-            for j in range(prev_start, prev_stop, 2):
-                curr_arr.append(prev_arr[j] + prev_arr[j + 1])
-            prev_start = curr_start
-
-    import gzip
-    with gzip.open('bins.csv.gz', 'wt') as f:
-        f.write('#Size\tCoverage\n')
-        j = 1
-        for i, bins in enumerate(bins_array):
-            for v in bins:
-                f.write(f'{j*100}\t{v}\n')
-            j *= 2
-
-    b_stop = perf_counter()
-    print("Bins array computed in {}s".format(b_stop-b_start), file=sys.stderr)
-
-    #return bins_array
 
 def estimate_mean_std_at_ploidy(counts, bp_step, input_ploidy):
     '''Function to estimate mean and standard deviation per bin size.'''
@@ -591,54 +481,4 @@ def alpha_and_beta(bins_node, bin_size = 100, ploidies = [1,2]):
     p_stop = perf_counter()
     print("Alpha and beta estimated in {}s".format(p_stop-p_start), file=sys.stderr)
     return best_a, best_b
-
-
-# def alpha_and_beta(bins_array, sel_size = 100):
-#     '''Get alpha and beta coefficients for NB parameters estimation.'''
-
-#     p_start = perf_counter()
-#     # Create dictionary of bins per size
-#     cov = defaultdict(list)
-#     for arr in bins_array:
-#         cov[sel_size] += arr
-#         sel_size *= 2
-
-#     params = defaultdict()
-#     TOP_PERC = 3
-#     ROUND_BINS = 4
-
-#     # Iterate over all bin sizes
-#     for size in cov:
-#         bins = np.array(cov[size])
-#         #sys.stderr.write(f"Starting bin {size}: {len(bins)}\n")
-
-#         # Filter bins by quantile
-#         thresh = np.quantile(bins, [TOP_PERC/100, (100 - TOP_PERC)/100])
-#         bins = bins[(thresh[0] <= bins) & (bins <= thresh[1])]
-
-#         # Use a step to round and generate counts for rounded coverages
-#         bp_step = size // ROUND_BINS
-#         counts = np.bincount(np.round(bins / bp_step).astype(dtype=np.int64), minlength=int(round(thresh[1])) // bp_step + 1)
-#         # sys.stderr.write(f"{len(counts)} counts\n")
-
-#         # Get mean and standard deviation from MLE
-#         mean, sd = estimate_mean_std(counts, bp_step, ROUND_BINS)
-
-#         # Add them to a dictionary
-#         params[size] = [mean, sd]
-
-#     sizes, vals = zip(*params.items())
-#     means, sds = zip(*vals)
-
-#     # Compute alpha and beta coefficients from linear regression
-#     alpha = stats.linregress(sizes,means).slope
-#     beta = stats.linregress(sizes,sds).slope
-
-#     print("Alpha value: {}".format(alpha), file=sys.stderr)
-#     print("Beta value: {}".format(beta), file=sys.stderr)
-
-#     p_stop = perf_counter()
-#     print("Alpha and beta estimated in {}s".format(p_stop-p_start), file=sys.stderr)
-
-#     return alpha, beta, params
 

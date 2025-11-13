@@ -6,28 +6,6 @@ import sys
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    # subparsers = parser.add_subparsers(dest="command", required=True)
-
-    # # Create subcommands for the different tasks: getting the node coverages, getting the negative binomial parameters, and solving the ILP
-    # cov_parser = subparsers.add_parser("cov", help="Get csv file with number of aligned base pairs (coverage) per node.")
-    # cov_parser.add_argument("-g", "--graph", help="The GFA file.", required=True)
-    # cov_parser.add_argument("-a", "--graphalignment", help="The GAF file.", required=True)
-    # cov_parser.add_argument("-c", "--outcov", help="The name for the output csv file with the node coverages", required=True)
-    # cov_parser.add_argument("-p", "--ploidy", type=int, default=2, help="Ploidy of the dataset. (default:%(default)s)")
-    # cov_parser.add_argument("-b", "--bin_size", nargs=3, default=[5000,50000,5000], metavar=('MIN', 'MAX', 'STEP'), type=int, help="Set the range for the bin size to use for the NB parameters' estimation. (default:%(default)s)")
-
-    # ilp_parser = subparsers.add_parser("flow", help="Solve flow network problem to get CN information per node.")
-    # ilp_parser.add_argument("-g", "--graph", help="The GFA file.", required=True)
-    # ilp_parser.add_argument("-n", "--nodecovs", help="The csv file outputted by 'cov' with the individual node coverage.", required=True)
-    # ilp_parser.add_argument("-o", "--outfile", help="The name for the output csv file with the copy number per node", required=True)
-
-    # all_parser = subparsers.add_parser("all", help="Run cov and flow at once.")
-    # all_parser.add_argument("-g", "--graph", help="The GFA file.", required=True)
-    # all_parser.add_argument("-a", "--graphalignment", help="The GAF file.", required=True)
-    # all_parser.add_argument("-c", "--outcov", help="The name for the output csv file with the node coverages", required=True)
-    # all_parser.add_argument("-p", "--ploidy", type=int, default=2, help="Ploidy of the dataset. (default:%(default)s)")
-    # all_parser.add_argument("-o", "--outfile", help="The name for the output csv file with the copy number per node", required=True)
-    # all_parser.add_argument("-b", "--bin_size", nargs=3, default=[5000,50000,5000], metavar=('MIN', 'MAX', 'STEP'), type=int, help="Set the range for the bin size to use for the NB parameters' estimation. (default:%(default)s)")
 
     parser.add_argument("-g", "--graph", help="The GFA file.", required=True)
     parser.add_argument("-a", "--graphalignment", help="The GAF file.", required=False)
@@ -46,23 +24,6 @@ def parse_arguments():
     np.set_printoptions(precision=6, linewidth=sys.maxsize, suppress=True, threshold=sys.maxsize)
 
     return args
-
-    # if args.command == "cov":
-    #     nodes, edges = read_graph(args.graph)
-    #     clip_nodes(nodes, edges)
-    #     bin_nodes(nodes, args.bin_size)
-    #     node_covs(nodes, args.graphalignment, args.ploidy, args.outcov)
-    # elif args.command == "flow":
-    #     nodes, edges = read_graph(args.graph)
-    #     clip_nodes(nodes, edges)
-    #     ilp(args.graph, args.nodecovs, args.outfile, nodes, edges)
-    # elif args.command == "all":
-    #     nodes, edges = read_graph(args.graph)
-    #     clip_nodes(nodes, edges)
-    #     node_covs(nodes, args.graphalignment, args.ploidy, args.outcov)
-    #     ilp(args.graph, args.nodecovs, args.outfile, nodes, edges)
-    # else:
-    #     raise NotImplementedError(f"Command {args.command} does not exist.",)
 
 def write_copynums(copy_numbers, out_fname):
     with open(out_fname,"w") as out :
@@ -104,21 +65,20 @@ def main():
             alpha, beta = pickle.load(open(args.params, 'rb'))
         else:
             bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
-            compute_bins_array(bins_node)
-    #         alpha, beta = alpha_and_beta(bins_node, args.bin_size, args.ploidy)
-    #         with open("dump-{}.parameters.tmp.pkl".format(args.outcov), 'wb') as p:
-    #             pickle.dump((alpha,beta), p)
-    #     with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
-    #         pickle.dump((nodes,edges,coverages,rlen_params), f)
-    # elif args.pickle and args.params:
-    #     nodes,edges,coverages,rlen_params = pickle.load(open(args.pickle, 'rb'))
-    #     alpha,beta = pickle.load(open(args.params, 'rb'))
+            alpha, beta = alpha_and_beta(bins_node, args.bin_size, args.ploidy)
+            with open("dump-{}.parameters.tmp.pkl".format(args.outcov), 'wb') as p:
+                pickle.dump((alpha,beta), p)
+        with open("dump-{}.tmp.pkl".format(args.outcov), 'wb') as f:
+            pickle.dump((nodes,edges,coverages,rlen_params), f)
+    elif args.pickle and args.params:
+        nodes,edges,coverages,rlen_params = pickle.load(open(args.pickle, 'rb'))
+        alpha,beta = pickle.load(open(args.params, 'rb'))
 
-    # copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon, args.complexity)
-    # print("Writing results to output files!")
-    # write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
-    # write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
-    # write_solutionmetrics(concordance, alpha, beta, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
+    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.outcov, args.super_prob, args.cheap_prob, args.epsilon, args.complexity)
+    print("Writing results to output files!")
+    write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
+    write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
+    write_solutionmetrics(concordance, alpha, beta, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.outcov, args.super_prob, args.cheap_prob))
 
 if __name__ == "__main__":
     main()
