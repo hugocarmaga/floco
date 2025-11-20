@@ -27,7 +27,7 @@ def parse_arguments():
     parser.add_argument("-e", "--epsilon", type=float, default=0.02, help="Epsilon value for adjusting CN0 counts to probabilities (default:%(default)s)")
     parser.add_argument("-b", "--bin-size", default=100, type=int, help="Set the bin size to use for the NB parameters estimation. (default:%(default)s)")
     parser.add_argument("-c", "--complexity", type=int, default=2, help="Model complexity (1-3): larger = slower and more accurate. (default: %(default)s)")
-    parser.add_argument("-d", "--pickle", type=str, nargs=2, help="Pickle dumps with the data. Parameters dump should be given last. Dump files can be produced with '--debug'.", required=False)
+    parser.add_argument("-d", "--pickle", type=str, help="Pickle dump with the data. Dump file can be produced with '--debug'.", required=False)
     parser.add_argument("--debug", help="Produce additional files.", required=False)
 
     args = parser.parse_args()
@@ -72,13 +72,10 @@ def main():
         bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
         alpha, beta = alpha_and_beta(bins_node, args.bin_size, args.bg_ploidy)
         if args.debug:
-            with open("dump-{}.parameters.tmp.pkl".format(args.output), 'wb') as p:
-                pickle.dump((alpha,beta), p)
             with open("dump-{}.tmp.pkl".format(args.output), 'wb') as f:
-                pickle.dump((nodes,edges,coverages,rlen_params), f)
+                pickle.dump((nodes,edges,coverages,rlen_params,alpha,beta), f)
     elif args.pickle:
-        nodes,edges,coverages,rlen_params = pickle.load(open(args.pickle[0], 'rb'))
-        alpha,beta = pickle.load(open(args.pickle[1], 'rb'))
+        nodes,edges,coverages,rlen_params,alpha,beta = pickle.load(open(args.pickle, 'rb'))
 
     copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.output, args.expen_pen, args.cheap_pen, args.epsilon, args.complexity, args.debug)
     print("*** Writing results to output files!", file=sys.stderr)
