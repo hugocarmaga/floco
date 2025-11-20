@@ -64,7 +64,7 @@ def main():
     assert 1 <= args.complexity <=3, "Complexity should be 1, 2 or 3!"
 
     import pickle
-    if args.graphalignment:
+    if args.alignment:
         nodes, edges = read_graph(args.graph)
         clip_nodes(nodes, edges)
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
