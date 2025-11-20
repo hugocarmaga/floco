@@ -28,6 +28,9 @@ def bounds_and_probs(length, coverage, bins, alpha, beta, epsilon, subsampling_d
 def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
         source_prob = -20, cheap_source = -2, epsilon = 0.3, complexity = 2):
     '''Function to formulate and solve the ILP for the flow network problem.'''
+
+    print("*** Starting ILP optimization with expensive penalty {}, cheap penalty {}, epsilon {} and complexity {}".format(source_prob, cheap_source, epsilon, complexity), file=sys.stderr)
+
     try:
         i_start = perf_counter()
         # Create a new model
@@ -59,7 +62,6 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
         sink_right = {node: model.addVar(vtype=GRB.INTEGER, lb = 0,  name = "sink_right_"+node) for node in nonempty_nodes}
 
         model.update()
-        print("Using secondary branch!")
 
         ### Constraints
 
@@ -119,7 +121,6 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
 
                 likeliest_CNs[node] = lower_bound + np.argmax(y)
 
-                if node == "utig4-1211": print("Probabilites to PWL: {}".format(y))
                 cn[node] = model.addVar(vtype = GRB.INTEGER, lb = lower_bound, ub = upper_bound - 1,  name = "cn_"+node)
                 model.addGenConstrPWL(cn[node], p_cn[node], x, y, "PWLConstr_"+node)
 
@@ -170,13 +171,13 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
         model.update()
         model.write("model_{}-super_{}-cheap_{}.lp".format(outfile, source_prob, cheap_source))
         i_stop = perf_counter()
-        print("ILP model generated and saved in {}s".format(i_stop-i_start), file=sys.stderr)
+        print("    ILP model generated and saved in {}s".format(i_stop-i_start), file=sys.stderr)
 
         model.setParam('Threads', 1)
         o_start = perf_counter()
         model.optimize()
         o_stop = perf_counter()
-        print("ILP optimization in {}s".format(o_stop-o_start), file=sys.stderr)
+        print("    ILP optimization in {}s".format(o_stop-o_start), file=sys.stderr)
 
         ### Collect results
         all_results = [["Source_prob", source_prob], ["Objective_Value", model.objVal], ["Runtime",model.Runtime] ]

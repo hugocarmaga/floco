@@ -1,6 +1,6 @@
 import argparse
-from estimation import bin_nodes, filter_bins, alpha_and_beta
-from graph_processing import calculate_covs, read_graph, clip_nodes
+from estimation import filter_bins, alpha_and_beta
+from graph_processing import calculate_covs, read_graph, clip_nodes, bin_nodes
 from flow_ilp import ilp
 import numpy as np
 import gzip, builtins, sys
@@ -91,7 +91,7 @@ def main():
         alpha,beta = pickle.load(open(args.pickle[1], 'rb'))
 
     copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.output, args.expen_pen, args.cheap_pen, args.epsilon, args.complexity)
-    print("Writing results to output files!")
+    print("Writing results to output files!", file=sys.stderr)
     write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.output, args.expen_pen, args.cheap_pen))
     write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.output, args.expen_pen, args.cheap_pen))
     write_solutionmetrics(concordance, alpha, beta, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.output, args.expen_pen, args.cheap_pen))

@@ -6,29 +6,12 @@ from scipy import stats, optimize, special
 from math import sqrt
 import sys
 
-def bin_nodes(nodes, bin_size = 100):
-    '''Function to select nodes to bin and iniate the bin coverages'''
-    nodes_to_bin = list()
-    b_start = perf_counter()
-    for node in nodes:
-        size = nodes[node].clipped_len()
-        if size >= bin_size:
-            nodes_to_bin.append(nodes[node].name)
-            # For each node, create a list of tuples with (bin size, array with the size of the nr of bins)
-            nodes[node].bins = list()
-            nr_bins = size // bin_size
-            nodes[node].bins.append((bin_size, np.zeros(nr_bins, dtype=np.uint64)))
-        elif size > 0:
-            nodes[node].bins = list()
-            nodes[node].bins.append((size, np.zeros(1, dtype=np.uint64)))
-
-    b_stop = perf_counter()
-    print("Nodes binned in {}s".format(b_stop-b_start), file=sys.stderr)
-
-    return nodes_to_bin
 
 def filter_bins(nodes, nodes_to_bin, sel_size = 100):
     '''Funtion to filter bins by quality'''
+
+    print("*** Starting parameter estimation using bins of size {}".format(sel_size), file=sys.stderr)
+
     f_start = perf_counter()
     bp_cov_per_node = defaultdict()  # Dictionary to save the bins that pass the filtering criteria
     mean_per_node = defaultdict()  # Dictionary to save the average bin coverage for all the binned nodes
@@ -50,7 +33,7 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
     bins_node = {node: bins for node,bins in bp_cov_per_node.items() if thresh[0] <= mean_per_node[node] <= thresh[1]}
 
     f_stop = perf_counter()
-    print("Bins filtered in {}s".format(f_stop-f_start), file=sys.stderr)
+    print("    Bins filtered in {}s".format(f_stop-f_start), file=sys.stderr)
 
     return bins_node
 
@@ -59,7 +42,6 @@ def estimate_mean_std_at_ploidy(counts, bp_step, input_ploidy):
     '''Function to estimate mean and standard deviation per bin size.'''
     EPSILON = 0.01
     N_CN = max(4, input_ploidy + 3)
-    print("Estimating parameters", file=sys.stderr)
 
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', category=RuntimeWarning)
@@ -93,7 +75,6 @@ def estimate_mean_std_at_ploidy(counts, bp_step, input_ploidy):
         m, v = sol.x[:2]
         cs = sol.x[2:]
         cs /= np.sum(cs)
-        print(f"Ploidy {input_ploidy}:  L = -{LL:.0f}, m = {m:.2f}, sd = {sqrt(v):.2f}, CN fractions: {cs}", file=sys.stderr)
 
         return LL, m, sqrt(v)
 
@@ -123,8 +104,8 @@ def alpha_and_beta(bins_node, bin_size = 100, ploidies = [1,2]):
     best_a /= bin_size
     best_b /= bin_size
 
-    print("Alpha: {}, Beta: {}".format(best_a, best_b), file=sys.stderr)
+    print("    Mean for bin size 1: {}, Standard deviation for bin size 1: {}".format(best_a, best_b), file=sys.stderr)
     p_stop = perf_counter()
-    print("Alpha and beta estimated in {}s".format(p_stop-p_start), file=sys.stderr)
+    print("    Mean and standard deviation estimated in {}s".format(p_stop-p_start), file=sys.stderr)
     return best_a, best_b
 

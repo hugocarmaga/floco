@@ -77,7 +77,7 @@ class Node:
 
 def read_graph(graph_fname):
     '''This function takes a GFA file as an input, and returns a list of Edge objects, and a dictionary of {'node_name': Node object}'''
-
+    print("*** Starting graph preprocessing from {}".format(graph_fname), file=sys.stderr)
     edges = defaultdict()
     nodes = defaultdict()
     g_start = perf_counter()
@@ -104,7 +104,7 @@ def read_graph(graph_fname):
                 elif columns[4] == "-":
                     nodes[columns[3]].r_edges += 1
     g_stop = perf_counter()
-    print("Graph read in {}s".format(g_stop-g_start), file=sys.stderr)
+    print("    Graph read in {}s".format(g_stop-g_start), file=sys.stderr)
 
     return nodes, edges
 
@@ -155,7 +155,7 @@ def clip_nodes(nodes,edges):
                 node2.r_clipping = edge.ovlp
 
     c_stop = perf_counter()
-    print("Nodes clipped in {}s".format(c_stop-c_start), file=sys.stderr)
+    print("    Nodes clipped in {}s".format(c_stop-c_start), file=sys.stderr)
 
 
 ONE = np.uint64(1)
@@ -204,6 +204,8 @@ def filter_gaf(f):
 
 def calculate_covs(alignment_fname, nodes, edges):
     '''This function takes the GAF file as an input, as well as the dictionary with the Node objects, in order to count the number of aligned base pairs per node.'''
+
+    print("*** Reading alignments from {}".format(alignment_fname), file=sys.stderr)
 
     nodes = {k: v for k, v in nodes.items() if v.clipped_len() > 0}  #Filter out nodes where the left clipping point is bigger (or the same) than the rigth clipping one
 
@@ -303,7 +305,7 @@ def calculate_covs(alignment_fname, nodes, edges):
                         if nodes[aln_nodes[-1][0]].bins != None: update_bins(nodes[aln_nodes[-1][0]], node_end, nodes[aln_nodes[-1][0]].right_end())
 
     a_stop = perf_counter()
-    print("Read {} alignments in {}s".format(nr_align,a_stop-a_start), file=sys.stderr)
+    print("    Read {} alignments in {}s".format(nr_align,a_stop-a_start), file=sys.stderr)
 
     ae, loce, scalee = _fit_skewnorm(read_length)
 
@@ -320,6 +322,27 @@ def _fit_skewnorm(read_lens: list):
         arr = arr[ixs]
 
     return sn.fit(arr)
+
+def bin_nodes(nodes, bin_size = 100):
+    '''Function to select nodes to bin and iniate the bin coverages'''
+    nodes_to_bin = list()
+    b_start = perf_counter()
+    for node in nodes:
+        size = nodes[node].clipped_len()
+        if size >= bin_size:
+            nodes_to_bin.append(nodes[node].name)
+            # For each node, create a list of tuples with (bin size, array with the size of the nr of bins)
+            nodes[node].bins = list()
+            nr_bins = size // bin_size
+            nodes[node].bins.append((bin_size, np.zeros(nr_bins, dtype=np.uint64)))
+        elif size > 0:
+            nodes[node].bins = list()
+            nodes[node].bins.append((size, np.zeros(1, dtype=np.uint64)))
+
+    b_stop = perf_counter()
+    print("    Nodes binned in {}s".format(b_stop-b_start), file=sys.stderr)
+
+    return nodes_to_bin
 
 def update_bins(node, start, end):
     '''Function to add coverage to the bins.'''
