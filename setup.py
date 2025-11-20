@@ -18,7 +18,7 @@ setuptools.setup(
     long_description=long_description,
     url='https://github.com/hugocarmaga/floco',
 
-    package_dir={'': 'src/floco'},
+    package_dir={'': 'src'},
     packages=setuptools.find_packages(where='src'),
     python_requires='>=3.10',
     install_requires=requirements,
