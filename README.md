@@ -121,3 +121,9 @@ utig4-730,2829470,49583270,2
 ```
 
 ## Example applications
+
+<p align="center"><img src=".examples/misassembly.png"/></p>
+
+<p align="center"><img src=".examples/overview_1e.png"/></p>
+
+<p align="center"><img src=".examples/concordance_example.png"/></p>
