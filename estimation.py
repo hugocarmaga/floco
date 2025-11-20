@@ -4,9 +4,18 @@ import re
 import warnings
 import numpy as np
 from time import perf_counter
-import sys
 from scipy import stats, optimize, special
 from math import sqrt
+import gzip, builtins, sys
+
+def open(filename, mode='r'):
+    assert mode == 'r' or mode == 'w'
+    if filename is None or filename == '-':
+        return sys.stdin if mode == 'r' else sys.stdout
+    elif filename.endswith('.gz'):
+        return gzip.open(filename, mode + 't')
+    else:
+        return builtins.open(filename, mode)
 
 @dataclass
 class Edge:
@@ -68,28 +77,6 @@ class Node:
 
     def middle_point(self):
         return self.clipped_len() // 2 + self.l_clipping
-
-def write_results(nodes, coverages, read_depth, means_cov, vars_cov, means_rd, vars_rd, out_fname):
-    with open("per_bin_mean_and_var_"+out_fname,"w") as out :
-        out.write("Bin size,Mean_BP,Variance_BP,Mean_RD,Variance_RD\n")
-        for size in means_cov:
-            out.write(str(size) + "," + str(means_cov[size][0]) + "," + str(vars_cov[size]) + "," + str(means_rd[size][0]) + "," + str(vars_rd[size]) + "\n")
-
-    with open(out_fname, "w") as out :
-        out.write("#Node name,Clipped_len,BP_cov,RD_cov\n")
-        for node in read_depth:
-            out.write(node + "," + str(nodes[node].clipped_len()) + "," + str(coverages[node]) + "," + str(read_depth[node]) + "\n")
-        out.write("#Node name,Bin_start,Bin_end,BP_cov,RD_cov\n")
-        for node in nodes:
-            if nodes[node].bins != None:
-                for (bin_size, cov_bins, rd_bins) in nodes[node].bins:
-                    start = nodes[node].l_clipping
-                    end = start + bin_size
-                    for i in range(cov_bins.size):
-                        out.write(node + "," + str(start) + "," + str(end) + "," + str(cov_bins[i]) + "," + str(rd_bins[i]) + "\n")
-                        start += bin_size
-                        end += bin_size
-
 
 def read_graph(graph_fname):
     '''This function takes a GFA file as an input, and returns a list of Edge objects, and a dictionary of {'node_name': Node object}'''
@@ -412,7 +399,7 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
 def estimate_mean_std_at_ploidy(counts, bp_step, input_ploidy):
     '''Function to estimate mean and standard deviation per bin size.'''
     EPSILON = 0.01
-    N_CN = max(4, input_ploidy + 2)
+    N_CN = max(4, input_ploidy + 3)
     print("Estimating parameters", file=sys.stderr)
 
     with warnings.catch_warnings():

@@ -1,13 +1,11 @@
 import gurobipy as gp
 from gurobipy import GRB
-from math import log
 from collections import defaultdict
 import counts_to_probabs as ctp
 from time import perf_counter
 import sys
 import numpy as np
 import random
-from scipy.special import logsumexp
 import scipy.stats
 
 
