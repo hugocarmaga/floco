@@ -1,7 +1,7 @@
 import argparse
-from estimation import filter_bins, alpha_and_beta
-from graph_processing import calculate_covs, read_graph, clip_nodes, bin_nodes
-from flow_ilp import ilp
+from .estimation import filter_bins, alpha_and_beta
+from .graph_processing import calculate_covs, read_graph, clip_nodes, bin_nodes
+from .flow_ilp import ilp
 import numpy as np
 import gzip, builtins, sys
 
