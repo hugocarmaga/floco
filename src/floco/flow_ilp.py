@@ -1,7 +1,7 @@
 import gurobipy as gp
 from gurobipy import GRB
 from collections import defaultdict
-from .counts_to_probabs import counts_to_probabs as ctp
+import counts_to_probabs as ctp
 from time import perf_counter
 import sys
 import numpy as np
