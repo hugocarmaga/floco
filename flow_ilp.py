@@ -26,7 +26,7 @@ def bounds_and_probs(length, coverage, bins, alpha, beta, epsilon, subsampling_d
 
 
 def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
-        source_prob = -20, cheap_source = -2, epsilon = 0.3, complexity = 2):
+        source_prob = -20, cheap_source = -2, epsilon = 0.3, complexity = 2, debug = False):
     '''Function to formulate and solve the ILP for the flow network problem.'''
 
     print("*** Starting ILP optimization with expensive penalty {}, cheap penalty {}, epsilon {} and complexity {}".format(source_prob, cheap_source, epsilon, complexity), file=sys.stderr)
@@ -169,9 +169,12 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
 
         ### Optimize model
         model.update()
-        model.write("model_{}-super_{}-cheap_{}.lp".format(outfile, source_prob, cheap_source))
         i_stop = perf_counter()
-        print("    ILP model generated and saved in {}s".format(i_stop-i_start), file=sys.stderr)
+        print("    ILP model generated {}s".format(i_stop-i_start), file=sys.stderr)
+
+        if debug:
+            model.write("model_{}.lp".format(outfile.split(".csv")[0]))
+            print("    ILP model saved in model_{}.lp".format(outfile.split(".csv")[0]), file=sys.stderr)
 
         model.setParam('Threads', 1)
         o_start = perf_counter()
@@ -181,14 +184,14 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
 
         ### Collect results
         all_results = [["Source_prob", source_prob], ["Objective_Value", model.objVal], ["Runtime",model.Runtime] ]
-        copy_numbers = {node: [int(var.x), coverages.get(node)] for node, var in cn.items()}
+        copy_numbers = {node: [nodes[node].clipped_len(), coverages.get(node), int(var.x)] for node, var in cn.items()}
 
         concordance = {}
         for node, var in cn.items():
             likeliest_CN = likeliest_CNs.get(node)
             if likeliest_CN is not None:
                 concordance[node] = [coverages[node], nodes[node].clipped_len(), int(var.x),
-                    likeliest_CN, int(var.x) - likeliest_CN]
+                    likeliest_CN]
 
         for v in model.getVars():
             all_results.append([v.varName, v.x])

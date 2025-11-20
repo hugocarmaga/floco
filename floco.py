@@ -39,7 +39,7 @@ def write_copynums(copy_numbers, out_fname):
     with open(out_fname,"w") as out :
         out.write("Node,Length,Sum_coverage,Copy_number\n")
         for k,v in copy_numbers.items():
-            out.write("{},{},{}\n".format(k, v[0], v[1]))
+            out.write("{},{}\n".format(k, ",".join([str(stat) for stat in v])))
 
 def write_ilpresults(all_results, out_fname):
     with open(out_fname,"w") as out :
@@ -47,18 +47,9 @@ def write_ilpresults(all_results, out_fname):
         for parts in all_results:
             out.write(",".join([str(p) for p in parts])+"\n")
 
-def write_solutionmetrics(concordance, alpha, beta, nodes, out_fname):
-    discordant_nodes = sum(1 for v in concordance.values() if (len(v)==5 and v[4] != 0))
-    covered_nodes = sum(1 for v in concordance.values() if v[0] >= 0)
-    discordant_clipped_bp = sum(nodes[node].clipped_len() for node in concordance if concordance[node][0] >= 0 and concordance[node][4] != 0)
-    full_length = sum(nodes[node].clipped_len() for node in nodes)
+def write_solutionmetrics(concordance, out_fname):
     with open(out_fname,"w") as out :
-        out.write("##Total number of nodes with positive length: {}\n".format(covered_nodes))
-        out.write("##Number of nodes with discordant copy numbers (%): {}({})\n".format(discordant_nodes, round(discordant_nodes/covered_nodes*100,2)))
-        out.write("##Number of (clipped) bp with discordant copy numbers (%): {}({})\n".format(discordant_clipped_bp, round(discordant_clipped_bp/full_length*100,2)))
-        out.write("##Coefficient value Alpha: {}\n".format(alpha))
-        out.write("##Coefficient value Beta: {}\n".format(beta))
-        out.write("#Node,Coverage,Length,Predicted_CN,Likeliest_CN,CN_difference\n")
+        out.write("#Node,Coverage,Length,Predicted_CN,Likeliest_CN\n")
         for node in concordance:
             out.write("{},{}\n".format(node, ",".join([str(stat) for stat in concordance[node]])))
 
@@ -77,24 +68,23 @@ def main():
         clip_nodes(nodes, edges)
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
         coverages, rlen_params = calculate_covs(args.alignment, nodes, edges)
-        if args.params:
-            alpha, beta = pickle.load(open(args.params, 'rb'))
-        else:
-            bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
-            alpha, beta = alpha_and_beta(bins_node, args.bin_size, args.bg_ploidy)
+        bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
+        alpha, beta = alpha_and_beta(bins_node, args.bin_size, args.bg_ploidy)
+        if args.debug:
             with open("dump-{}.parameters.tmp.pkl".format(args.output), 'wb') as p:
                 pickle.dump((alpha,beta), p)
-        with open("dump-{}.tmp.pkl".format(args.output), 'wb') as f:
-            pickle.dump((nodes,edges,coverages,rlen_params), f)
+            with open("dump-{}.tmp.pkl".format(args.output), 'wb') as f:
+                pickle.dump((nodes,edges,coverages,rlen_params), f)
     elif args.pickle:
         nodes,edges,coverages,rlen_params = pickle.load(open(args.pickle[0], 'rb'))
         alpha,beta = pickle.load(open(args.pickle[1], 'rb'))
 
-    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.output, args.expen_pen, args.cheap_pen, args.epsilon, args.complexity)
-    print("Writing results to output files!", file=sys.stderr)
-    write_copynums(copy_numbers, "copy_numbers-{}-super_{}-cheap_{}.csv".format(args.output, args.expen_pen, args.cheap_pen))
-    write_ilpresults(all_results, "ilp_results-{}-super_{}-cheap_{}.csv".format(args.output, args.expen_pen, args.cheap_pen))
-    write_solutionmetrics(concordance, alpha, beta, nodes, "stats_concordance-{}-super_{}-cheap_{}.csv".format(args.output, args.expen_pen, args.cheap_pen))
+    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.output, args.expen_pen, args.cheap_pen, args.epsilon, args.complexity, args.debug)
+    print("*** Writing results to output files!", file=sys.stderr)
+    write_copynums(copy_numbers, args.output)
+    if args.debug:
+        write_ilpresults(all_results, "ilp_results-{}.csv".format(args.output.split(".csv")[0]))
+        write_solutionmetrics(concordance, "stats_concordance-{}.csv".format(args.output.split(".csv")[0]))
 
 if __name__ == "__main__":
     main()
