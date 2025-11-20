@@ -24,5 +24,5 @@ setuptools.setup(
     install_requires=requirements,
     include_package_data=True,
 
-    entry_points = dict(console_scripts=['floco=floco.floco:main']),
+    entry_points = dict(console_scripts=['floco=floco:main']),
     )
