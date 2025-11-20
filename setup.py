@@ -1,6 +1,6 @@
 import setuptools
 
-from src.floco import __version__, __author__, __license__
+from src import __version__, __author__, __license__
 
 with open('README.md') as inp:
     long_description = inp.read()
