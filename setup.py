@@ -1,6 +1,6 @@
 import setuptools
 
-from src import __version__, __author__, __license__
+from src.floco import __version__, __author__, __license__
 
 with open('README.md') as inp:
     long_description = inp.read()
@@ -24,5 +24,5 @@ setuptools.setup(
     install_requires=requirements,
     include_package_data=True,
 
-    entry_points = dict(console_scripts=['floco=floco:main']),
+    entry_points = dict(console_scripts=['floco=floco.floco:main']),
     )
