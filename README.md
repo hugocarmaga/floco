@@ -103,21 +103,21 @@ The test dataset can be found [here](https://zenodo.org/records/17663150). It in
 
 To get copy number values for the test data, simply run:
 ```bash
-floco -g HG01114-chr6.gfa.gz -a hifi_HG01114-chr6_ga.gaf.gz -o test_dataset_copy-numbers.csv
+floco -g HG01114-chr6.gfa.gz -a hifi_HG01114-chr6_ga.gaf.gz -o test_dataset_copy-numbers.csv -p 1
 ```
 
 The output file should look like this:
 ```
 Node,Length,Sum_coverage,Copy_number
-utig4-9,11900559,210743696,3
+utig4-9,11900559,210743696,1
 utig4-99,111,666,1
-utig4-98,138062,5047482,4
+utig4-98,138062,5047482,2
 utig4-8,2333535,39779042,1
-utig4-7,25009,856214,4
+utig4-7,25009,856214,2
 utig4-734,22256,636834,1
 utig4-733,23057,358577,0
 utig4-731,16975505,295336678,1
-utig4-730,2829470,49583270,2
+utig4-730,2829470,49583270,1
 ```
 
 ## Example applications
