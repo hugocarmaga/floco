@@ -75,7 +75,7 @@ def main():
             with builtins.open("dump-{}.tmp.pkl".format(args.output), 'wb') as f:
                 pickle.dump((nodes,edges,coverages,rlen_params,alpha,beta), f)
     elif args.pickle:
-        nodes,edges,coverages,rlen_params,alpha,beta = pickle.load(open(args.pickle, 'rb'))
+        nodes,edges,coverages,rlen_params,alpha,beta = pickle.load(builtins.open(args.pickle, 'rb'))
 
     copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.output, args.expen_pen, args.cheap_pen, args.epsilon, args.complexity, args.debug)
     print("*** Writing results to output files!", file=sys.stderr)
