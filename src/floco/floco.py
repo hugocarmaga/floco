@@ -72,7 +72,7 @@ def main():
         bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
         alpha, beta = alpha_and_beta(bins_node, args.bin_size, args.bg_ploidy)
         if args.debug:
-            with open("dump-{}.tmp.pkl".format(args.output), 'wb') as f:
+            with builtins.open("dump-{}.tmp.pkl".format(args.output), 'wb') as f:
                 pickle.dump((nodes,edges,coverages,rlen_params,alpha,beta), f)
     elif args.pickle:
         nodes,edges,coverages,rlen_params,alpha,beta = pickle.load(open(args.pickle, 'rb'))
