@@ -28,7 +28,7 @@ Additionally, you need:
 - numpy>=2.3.2
 - scikit-learn>=1.7.1
 - scipy>=1.16.1
-- gurobipy>=12.0.3
+- gurobipy (Tested with v12.0.3, can be slower with older versions)
 
 ### Bioconda
 
