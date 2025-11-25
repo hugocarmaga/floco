@@ -1,5 +1,9 @@
-import gurobipy as gp
-from gurobipy import GRB
+try:
+    import gurobipy as gp
+    from gurobipy import GRB
+except ImportError:
+    pass
+
 from collections import defaultdict
 from . import counts_to_probabs as ctp
 from time import perf_counter

@@ -58,6 +58,12 @@ def write_solutionmetrics(concordance, out_fname):
 def main():
     args = parse_arguments()
 
+    try:
+        import gurobipy as gp
+    except ImportError:
+        sys.stderr.write('Please install Gurobi (see README)\n')
+        exit(1)
+
     assert args.expen_pen <= 0, "Super edge penalty cannot be positive!"
     assert args.cheap_pen <= 0, "Super edge penalty cannot be positive!"
     assert 0 <= args.epsilon <= 1, "Epsilon should be between 0 and 1!"
