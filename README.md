@@ -21,14 +21,13 @@ Floco (_flow_+_copy_) is a tool to call individual node copy number (CN) on (pan
 
 ### Requirements
 
-To run Floco, you need a [Gurobi License](https://www.gurobi.com/solutions/licensing/) for solving the ILP problem.
+To run Floco, you need a [Gurobi License](https://www.gurobi.com/solutions/licensing/) for solving the ILP problem. Please install [Gurobi](https://anaconda.org/channels/Gurobi/packages/gurobi/overview), using a version compatible with your license (here, tested using version 12.0.3, older versions might be slower).
 
 Additionally, you need:
 
 - numpy>=2.3.2
 - scikit-learn>=1.7.1
 - scipy>=1.16.1
-- gurobipy (Tested with v12.0.3, can be slower with older versions)
 
 ### Bioconda
 
