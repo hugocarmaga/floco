@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "floco"
+version = "1.0.0"
+dependencies = [
+    "numpy>=2.3.2",
+    "scikit-learn>=1.7.1",
+    "scipy>=1.16.1",
+]
+requires-python = ">=3.10"
+authors = [
+  {name = "Hugo Magalhães"},
+  {name = "Jonas Weber"},
+  {name = "Gunnar W. Klau"},
+  {name = "Tobias Marschall"},
+  {name = "Timofey Prodanov"},
+]
+maintainers = [
+  {name = "Hugo Magalhães"},
+  {name = "Timofey Prodanov"},
+]
+description = "Sequence-to-graph alignment based copy number calling using a network flow formulation"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE.md"]
+keywords = ["egg", "bacon", "sausage", "tomatoes", "Lobster Thermidor"]
+
+[project.urls]
+Repository = "https://github.com/hugocarmaga/floco"
+"Bug Tracker" = "https://github.com/hugocarmaga/floco/issues"
+
+[project.scripts]
+floco = "floco.floco:main"

@@ -5,6 +5,7 @@ from .graph_processing import calculate_covs, read_graph, clip_nodes, bin_nodes
 from .flow_ilp import ilp
 import numpy as np
 import gzip, builtins, sys
+import importlib.metadata
 
 def open(filename, mode='r'):
     assert mode == 'r' or mode == 'w'
@@ -16,7 +17,7 @@ def open(filename, mode='r'):
         return builtins.open(filename, mode)
 
 def parse_arguments():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(add_help=False)
 
     parser.add_argument("-g", "--graph", help="The GFA file with the graph.", required=True)
     parser.add_argument("-a", "--alignment", help="The GAF file with sequence-to-graph alignments.", required=False)
@@ -29,6 +30,10 @@ def parse_arguments():
     parser.add_argument("-c", "--complexity", type=int, default=2, help="Model complexity (1-3): larger = slower and more accurate. (default: %(default)s)")
     parser.add_argument("-d", "--pickle", type=str, help="Pickle dump with the data. Dump file can be produced with '--debug'.", required=False)
     parser.add_argument("--debug", action='store_true' ,help="Produce additional files.", required=False)
+    parser.add_argument('-h', '--help', action='help',
+        help='Show this help message and exit.')
+    parser.add_argument('-V', '--version', action='version', help="Show program's version number and exit.",
+        version='floco {version}'.format(version=importlib.metadata.version('floco')))
 
     args = parser.parse_args()
 
