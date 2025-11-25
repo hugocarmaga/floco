@@ -7,7 +7,6 @@ Floco (_flow_+_copy_) is a tool to call individual node copy number (CN) on (pan
 - [Installation](#installation)
   + [Requirements](#requirements)
   + [Bioconda](#bioconda)
-  + [Docker/Singularity](#dockersingularity)
   + [Manual](#manual)
 - [Usage](#usage)
   + [Input](#input)
@@ -33,10 +32,6 @@ Additionally, you need:
 
 Coming soon
 
-### Docker/Singularity
-
-Coming soon
-
 ### Manual
 
 To manually install Floco, just run the following:
@@ -44,8 +39,11 @@ To manually install Floco, just run the following:
 ```bash
 git clone https://github.com/hugocarmaga/floco.git
 cd floco
-pip install -e .
+python -m pip install .
+# or (if you don't want to install any dependencies)
+python -m pip install . --no-deps
 ```
+
 
 ## Usage
 
