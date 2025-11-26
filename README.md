@@ -30,7 +30,11 @@ Additionally, you need:
 
 ### Bioconda
 
-Coming soon
+To install Floco with conda, run:
+
+```bash
+conda install -c bioconda floco
+```
 
 ### Manual
 
