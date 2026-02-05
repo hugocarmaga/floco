@@ -26,7 +26,7 @@ description = "Sequence-to-graph alignment based copy number calling using a net
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE.md"]
-keywords = ["egg", "bacon", "sausage", "tomatoes", "Lobster Thermidor"]
+keywords = ["copy number", "graph", "flow"]
 
 [project.urls]
 Repository = "https://github.com/hugocarmaga/floco"
