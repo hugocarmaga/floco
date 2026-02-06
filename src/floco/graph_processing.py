@@ -321,7 +321,7 @@ def _fit_skewnorm(read_lens: list):
         ixs = np.random.choice(len(read_lens), subset_size, replace=False)
         arr = arr[ixs]
 
-    if arr.var() <= 1e-6
+    if arr.var() <= 1e-6:
         rlen_params = (arr.mean(), np.nan, np.nan)
     else:
         try:
