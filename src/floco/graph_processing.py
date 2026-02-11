@@ -81,19 +81,25 @@ def read_graph(graph_fname):
     edges = defaultdict()
     nodes = defaultdict()
     g_start = perf_counter()
+    tmp_edges = defaultdict()
     with open(graph_fname,"r") as graph_file:
         for line in graph_file:
             columns = line.split()
 
             #sequence line
             if columns[0] == "S":
+                # Read node length from the GFA file. If it's not present, we take it as the length of the sequence, which is the third column of the GFA file. If the length is present, we take it as the value after "LN:" in the fourth column
                 node_len = columns[3].split(':')[2] if columns[3].startswith("LN:") else len(columns[2])
                 nodes[columns[1]] = Node(columns[1], node_len)  #Add Node object as a value to the dictionary of nodes, using the node name as key
 
             # link line
             if columns[0] == "L":
-                edges["e_{}_{}_{}_{}".format(columns[1],columns[2],columns[3],columns[4])] = Edge(columns[1], columns[3], columns[2]=="+", columns[4]=="+", int(columns[5].strip("M")))  #Add Edge object to the dictionary of edges
-
+                #Check if both nodes of the edge are present in the node dictionary, otherwise, store edge in a temporary set to add it later, when we have read all the nodes. This is to avoid problems with the order of the lines in the GFA file, as we can have link lines before sequence lines.
+                if nodes.get(columns[1]) == None or nodes.get(columns[3]) == None:
+                    tmp_edges["e_{}_{}_{}_{}".format(columns[1],columns[2],columns[3],columns[4])] = Edge(columns[1], columns[3], columns[2]=="+", columns[4]=="+", int(columns[5].strip("M")))
+                    continue
+                else:
+                    edges["e_{}_{}_{}_{}".format(columns[1],columns[2],columns[3],columns[4])] = Edge(columns[1], columns[3], columns[2]=="+", columns[4]=="+", int(columns[5].strip("M")))  #Add Edge object to the dictionary of edges
                 # Add number of edges connected to each side of each node
                 if columns[2] == "+":
                     nodes[columns[1]].r_edges += 1
@@ -104,6 +110,21 @@ def read_graph(graph_fname):
                     nodes[columns[3]].l_edges += 1
                 elif columns[4] == "-":
                     nodes[columns[3]].r_edges += 1
+
+    # Now, we add the edges that were stored in the temporary set, as we have already read all the nodes and we know that they are present in the node dictionary.
+    for edge in tmp_edges.values():
+        edges["e_{}_{}_{}_{}".format(edge.node1, "+" if edge.strand1 else "-", edge.node2, "+" if edge.strand2 else "-")] = edge
+        # Add number of edges connected to each side of each node
+        if edge.strand1:
+            nodes[edge.node1].r_edges += 1
+        else:
+            nodes[edge.node1].l_edges += 1
+
+        if edge.strand2:
+            nodes[edge.node2].l_edges += 1
+        else:
+            nodes[edge.node2].r_edges += 1
+
     g_stop = perf_counter()
     print("    Graph read in {}s".format(g_stop-g_start), file=sys.stderr)
 
