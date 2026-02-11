@@ -307,13 +307,13 @@ def calculate_covs(alignment_fname, nodes, edges):
     a_stop = perf_counter()
     print("    Read {} alignments in {}s".format(nr_align,a_stop-a_start), file=sys.stderr)
 
-    ae, loce, scalee = _fit_skewnorm(read_length)
-
-    return coverages, (ae, loce, scalee)
+    rlen_params = _fit_skewnorm(read_length)
+    return coverages, rlen_params
 
 def _fit_skewnorm(read_lens: list):
     '''Function to fit a skew normal distribution to the read lengths distribution.'''
-    from scipy.stats import skewnorm as sn
+    from scipy.stats import skewnorm
+    from scipy.stats._warnings_errors import FitError
 
     subset_size = 100000
     arr = np.array(read_lens)
@@ -321,7 +321,14 @@ def _fit_skewnorm(read_lens: list):
         ixs = np.random.choice(len(read_lens), subset_size, replace=False)
         arr = arr[ixs]
 
-    return sn.fit(arr)
+    if arr.var() <= 1e-6:
+        rlen_params = (arr.mean(), np.nan, np.nan)
+    else:
+        try:
+            rlen_params = skewnorm.fit(arr)
+        except FitError:
+            rlen_params = (arr.mean(), np.nan, np.nan)
+    return rlen_params
 
 def bin_nodes(nodes, bin_size = 100):
     '''Function to select nodes to bin and iniate the bin coverages'''
