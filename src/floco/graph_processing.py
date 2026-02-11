@@ -87,7 +87,8 @@ def read_graph(graph_fname):
 
             #sequence line
             if columns[0] == "S":
-                nodes[columns[1]] = Node(columns[1], len(columns[2]))  #Add Node object as a value to the dictionary of nodes, using the node name as key
+                node_len = columns[3].split(':')[2] if columns[3].startswith("LN:") else len(columns[2])
+                nodes[columns[1]] = Node(columns[1], node_len)  #Add Node object as a value to the dictionary of nodes, using the node name as key
 
             # link line
             if columns[0] == "L":
