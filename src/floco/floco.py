@@ -29,6 +29,7 @@ def parse_arguments():
     parser.add_argument("-b", "--bin-size", default=100, type=int, help="Set the bin size to use for the NB parameters estimation. (default:%(default)s)")
     parser.add_argument("-c", "--complexity", type=int, default=2, help="Model complexity (1-3): larger = slower and more accurate. (default: %(default)s)")
     parser.add_argument("-d", "--pickle", type=str, help="Pickle dump with the data. Dump file can be produced with '--debug'.", required=False)
+    parser.add_argument("-t", "--threads", type=int, default=1, help="Number of computing threads to use by the ILP solver.", required=False)
     parser.add_argument("--debug", action='store_true' ,help="Produce additional files.", required=False)
     parser.add_argument('-h', '--help', action='help',
         help='Show this help message and exit.')
@@ -88,7 +89,7 @@ def main():
     elif args.pickle:
         nodes,edges,coverages,rlen_params,alpha,beta = pickle.load(builtins.open(args.pickle, 'rb'))
 
-    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.output, args.expen_pen, args.cheap_pen, args.epsilon, args.complexity, args.debug)
+    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params, args.output, args.expen_pen, args.cheap_pen, args.epsilon, args.complexity, args.debug, args.threads)
     print("*** Writing results to output files!", file=sys.stderr)
     write_copynums(copy_numbers, args.output)
     if args.debug:

@@ -30,7 +30,7 @@ def bounds_and_probs(length, coverage, bins, alpha, beta, epsilon, subsampling_d
 
 
 def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
-        source_prob = -20, cheap_source = -2, epsilon = 0.3, complexity = 2, debug = False):
+        source_prob = -20, cheap_source = -2, epsilon = 0.3, complexity = 2, debug = False, threads = 1):
     '''Function to formulate and solve the ILP for the flow network problem.'''
 
     print("*** Starting ILP optimization with expensive penalty {}, cheap penalty {}, epsilon {} and complexity {}".format(source_prob, cheap_source, epsilon, complexity), file=sys.stderr)
@@ -180,7 +180,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
             model.write("model_{}.lp".format(outfile.split(".csv")[0]))
             print("    ILP model saved in model_{}.lp".format(outfile.split(".csv")[0]), file=sys.stderr)
 
-        model.setParam('Threads', 1)
+        model.setParam('Threads', threads)
         o_start = perf_counter()
         model.optimize()
         o_stop = perf_counter()
