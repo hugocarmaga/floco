@@ -1,6 +1,6 @@
 from scipy.stats import nbinom as nb
 from scipy.special import logsumexp
-from scipy.stats import skewnorm as sn
+from scipy.stats import skewnorm
 import numpy as np
 from collections import deque
 
@@ -71,9 +71,15 @@ def cn_probs(alpha, beta, epsilon,
 
 def edge_cov_pen(d, alpha, ovlp, rlen_params, penalty):
     # Compute p_e0 and p_e1 for each edge, taking their "coverage" as an input
-    skn = sn(*rlen_params)
-    if d < np.floor(alpha * skn.sf(ovlp) / 4):
-        return penalty
 
+    # What fraction of reads is longer than the edge length?
+    if np.isnan(rlen_params[1]):
+        # We don't have estimated SN distribution, only mean read length (in rlen_params[0]).
+        frac_passthrough = int(rlen_params[0] >= ovlp)
     else:
-        return 0
+        frac_passthrough = skewnorm.sf(ovlp, *rlen_params)
+
+    # Return penalty if edge coverage is smaller than the expected number of reads div 4.
+    if d < np.floor(alpha * frac_passthrough / 4):
+        return penalty
+    return 0.0

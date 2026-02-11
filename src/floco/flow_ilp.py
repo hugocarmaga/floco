@@ -81,7 +81,8 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
         x2 = defaultdict()
         pen = 0.8 * source_prob
         diff_cutoff = abs(4 * source_prob)
-        subsampling_dist = max(1000, scipy.stats.skewnorm.mean(*rlen_params))
+        mean_len = rlen_params[0] if np.isnan(rlen_params[1]) else scipy.stats.skewnorm.mean(*rlen_params)
+        subsampling_dist = max(1000, mean_len)
         flow_penalty = gp.LinExpr()
 
         for k1 in edges:
