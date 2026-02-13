@@ -89,7 +89,7 @@ def read_graph(graph_fname):
             #sequence line
             if columns[0] == "S":
                 # Read node length from the GFA file. If it's not present, we take it as the length of the sequence, which is the third column of the GFA file. If the length is present, we take it as the value after "LN:" in the fourth column
-                node_len = columns[3].split(':')[2] if len(columns) > 3 and columns[3].startswith("LN:") else len(columns[2])
+                node_len = int(columns[3].split(':')[2]) if len(columns) > 3 and columns[3].startswith("LN:") else len(columns[2])
                 nodes[columns[1]] = Node(columns[1], node_len)  #Add Node object as a value to the dictionary of nodes, using the node name as key
 
             # link line
