@@ -180,8 +180,12 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
             model.write("model_{}.lp".format(outfile.split(".csv")[0]))
             print("    ILP model saved in model_{}.lp".format(outfile.split(".csv")[0]), file=sys.stderr)
 
+        # Debugging pggb case: add extra verbose and remove presolving
+        model.setParam('OutputFlag', 1)
+        model.setParam('Presolve', 0)
+        # model.setParam('Method', 0) # set to 0 to use simplex method
+
         model.setParam('Threads', threads)
-        model.setParam('Method', 0) # set to 0 to use simplex method
         o_start = perf_counter()
         model.optimize()
         o_stop = perf_counter()
