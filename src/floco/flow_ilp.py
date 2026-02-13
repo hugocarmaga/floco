@@ -182,6 +182,7 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
             print("    ILP model saved in model_{}.lp".format(outfile.split(".csv")[0]), file=sys.stderr)
 
         model.setParam('Threads', threads)
+        model.setParam('Method', 0) # set to 0 to use simplex method
         o_start = perf_counter()
         model.optimize()
         o_stop = perf_counter()
