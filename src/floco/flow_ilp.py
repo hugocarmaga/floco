@@ -1,9 +1,3 @@
-try:
-    import gurobipy as gp
-    from gurobipy import GRB
-except ImportError:
-    pass
-
 from collections import defaultdict
 from . import counts_to_probabs as ctp
 from time import perf_counter
@@ -12,6 +6,11 @@ import numpy as np
 import random
 import scipy.stats
 
+try:
+    import gurobipy as gp
+    from gurobipy import GRB
+except ImportError:
+    sys.stderr.write('ERROR: Please install gurobipy and obtain corresponding license\n')
 
 def bounds_and_probs(length, coverage, bins, alpha, beta, epsilon, subsampling_dist, diff_cutoff):
     if bins is None:
