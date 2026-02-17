@@ -93,8 +93,10 @@ options:
                         Set the bin size to use for the NB parameters estimation. (default:100)
   -c COMPLEXITY, --complexity COMPLEXITY
                         Model complexity (1-3): larger = slower and more accurate. (default: 2)
-  -d PICKLE PICKLE, --pickle PICKLE PICKLE
+  -d PICKLE, --pickle PICKLE
                         Pickle dump with the data. Dump file can be produced with '--debug'.
+  -t THREADS, --threads THREADS
+                        Number of computing threads to use by the ILP solver. (default: 1)
   --debug DEBUG         Produce additional files.
 ```
 
