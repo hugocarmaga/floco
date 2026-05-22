@@ -6,6 +6,7 @@ from .flow_ilp import ilp
 import numpy as np
 import gzip, builtins, sys
 import importlib.metadata
+import os
 
 def open(filename, mode='r'):
     assert mode == 'r' or mode == 'w'
@@ -75,6 +76,9 @@ def main():
     assert 0 <= args.epsilon <= 1, "Epsilon should be between 0 and 1!"
     assert 1 <= args.complexity <=3, "Complexity should be 1, 2 or 3!"
 
+    out_base = os.path.basename(args.output).split(".csv")[0]
+    landing_dir = os.path.dirname(args.output)
+
     import pickle
     if args.alignment:
         nodes, edges = read_graph(args.graph)
@@ -84,7 +88,7 @@ def main():
         bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
         alpha, beta = alpha_and_beta(bins_node, args.bin_size, args.bg_ploidy)
         if args.debug:
-            with builtins.open("dump-{}.tmp.pkl".format(args.output), 'wb') as f:
+            with builtins.open("{}/dump-{}.tmp.pkl".format(landing_dir, out_base), 'wb') as f:
                 pickle.dump((nodes,edges,coverages,rlen_params,alpha,beta), f)
     elif args.pickle:
         nodes,edges,coverages,rlen_params,alpha,beta = pickle.load(builtins.open(args.pickle, 'rb'))
@@ -94,8 +98,8 @@ def main():
     print("*** Writing results to output files!", file=sys.stderr)
     write_copynums(copy_numbers, args.output)
     if args.debug:
-        write_ilpresults(all_results, "ilp_results-{}.csv".format(args.output.split(".csv")[0]))
-        write_solutionmetrics(concordance, "stats_concordance-{}.csv".format(args.output.split(".csv")[0]))
+        write_ilpresults(all_results, "{}/ilp_results-{}.csv".format(landing_dir, out_base))
+        write_solutionmetrics(concordance, "{}/stats_concordance-{}.csv".format(landing_dir, out_base))
 
 if __name__ == "__main__":
     main()
