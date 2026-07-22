@@ -4,6 +4,7 @@ import re
 import numpy as np
 from time import perf_counter
 import gzip, builtins, sys
+import warnings
 
 def open(filename, mode='r'):
     assert mode == 'r' or mode == 'w'
@@ -111,8 +112,14 @@ def read_graph(graph_fname):
                 elif columns[4] == "-":
                     nodes[columns[3]].r_edges += 1
 
+    # Check whether any edge exist
+    if len(edges) == 0 and len(tmp_edges) == 0:
+        raise warnings.warn("GFA file has no valid edges. Floco will run but the network flow approach will not have any effect.")
+
     # Now, we add the edges that were stored in the temporary set, as we have already read all the nodes and we know that they are present in the node dictionary.
     for edge in tmp_edges.values():
+        if nodes.get(edge.node1) == None or nodes.get(edge.node2) == None:
+            raise RuntimeError(f'Edge {edge} references nodes that are not present in the GFA file. Please check the GFA file for missing nodes.')
         edges["e_{}_{}_{}_{}".format(edge.node1, "+" if edge.strand1 else "-", edge.node2, "+" if edge.strand2 else "-")] = edge
         # Add number of edges connected to each side of each node
         if edge.strand1:
@@ -193,12 +200,19 @@ def filter_gaf(f):
     covered = None
 
     for line in f:
+        if line.startswith('@'):
+            continue
         # For faster processing, only take columns that we need.
         columns = line.split('\t', 9)
         name = columns[0]
         read_len = int(columns[1])
         start = int(columns[2])
         end = int(columns[3])
+
+        # Check if positions in path are valid
+        if columns[7] == '*' or columns[8] == '*':
+            warnings.warn(f'Ignoring alignment for read {name} with invalid path positions: {columns[7]}-{columns[8]}')
+            continue
 
         if name != curr_name:
             if name in all_names:
