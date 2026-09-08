@@ -7,6 +7,7 @@ import numpy as np
 import gzip, builtins, sys
 import importlib.metadata
 import os
+import os.path
 
 def open(filename, mode='r'):
     assert mode == 'r' or mode == 'w'
@@ -24,6 +25,8 @@ def parse_arguments():
     parser.add_argument("-a", "--alignment", help="The GAF file with sequence-to-graph alignments.", required=False)
     parser.add_argument("-o", "--output", help="The name for the output csv file with the copy numbers.", required=True)
     parser.add_argument("-p", "--bg-ploidy", type=int, default=[1,2], nargs="+", help="Expected most common CN value in the graph (background ploidy of the dataset). (default:%(default)s)")
+    parser.add_argument("-l", "--locityper-bg",
+        help="Locityper preprocessing data for this sample. Can be used to supplement the parameter estimation step.")
     parser.add_argument("-S", "--expen-pen", type=float, default=-10000, help="Probability for using the super edges when there are other edges available. (default:%(default)s)")
     parser.add_argument("-s", "--cheap-pen", type=float, default=-25, help="Probability for using the super edges when there is no other edge available. (default:%(default)s)")
     parser.add_argument("-e", "--epsilon", type=float, default=0.02, help="Epsilon value for adjusting CN0 counts to probabilities (default:%(default)s)")
@@ -61,6 +64,23 @@ def write_solutionmetrics(concordance, out_fname):
         for node in concordance:
             out.write("{},{}\n".format(node, ",".join([str(stat) for stat in concordance[node]])))
 
+def load_locityper_params(filename):
+    import json
+    from scipy.stats import nbinom
+    if os.path.isdir(filename):
+        filename = os.path.join(filename, 'distr.gz')
+    with gzip.open(filename, 'rt') as f:
+        content = f.read()
+    params = json.loads(content)
+    depth_params = params['bg_depth']
+    GC_CONTENT = 40
+    window = int(depth_params['window'])
+    n = float(depth_params['n'][GC_CONTENT])
+    p = float(depth_params['p'][GC_CONTENT])
+    alpha = nbinom.mean(n, p) / window
+    beta = nbinom.std(n, p) / window
+    return alpha, beta
+
 
 def main():
     args = parse_arguments()
@@ -86,7 +106,10 @@ def main():
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
         coverages, rlen_params = calculate_covs(args.alignment, nodes, edges)
         bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
-        alpha, beta = alpha_and_beta(bins_node, args.bin_size, args.bg_ploidy)
+        if args.locityper_bg:
+            alpha, beta = load_locityper_params(args.locityper_bg)
+        else:
+            alpha, beta = alpha_and_beta(bins_node, args.bin_size, args.bg_ploidy)
         if args.debug:
             with builtins.open("{}/dump-{}.tmp.pkl".format(landing_dir, out_base), 'wb') as f:
                 pickle.dump((nodes,edges,coverages,rlen_params,alpha,beta), f)
