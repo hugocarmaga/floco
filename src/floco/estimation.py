@@ -110,6 +110,7 @@ def alpha_and_beta(bins_node, bin_size = 100, ploidies = [1,2]):
 
 
 def alpha_beta_from_locityper(filename, rlen_params):
+    import gzip
     import json
     import os.path
     from scipy.stats import nbinom, skewnorm
