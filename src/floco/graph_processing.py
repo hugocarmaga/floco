@@ -198,6 +198,7 @@ def filter_gaf(f):
     curr_name = None
     curr_bin_size = None
     covered = None
+    unmapped = 0
 
     for line in f:
         if line.startswith('@'):
@@ -211,7 +212,7 @@ def filter_gaf(f):
 
         # Check if positions in path are valid
         if columns[7] == '*' or columns[8] == '*':
-            warnings.warn(f'Ignoring alignment for read {name} with invalid path positions: {columns[7]}-{columns[8]}')
+            unmapped += 1
             continue
 
         if name != curr_name:
@@ -236,6 +237,9 @@ def filter_gaf(f):
             if not (covered & mask):
                 covered |= mask
                 yield columns
+
+    if unmapped:
+        print(f'    Skipped {unmapped} unmapped reads', file=sys.stderr)
 
 
 def calculate_covs(alignment_fname, nodes, edges):

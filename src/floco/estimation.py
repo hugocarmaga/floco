@@ -104,7 +104,6 @@ def alpha_and_beta(bins_node, bin_size = 100, ploidies = [1,2]):
     best_a /= bin_size
     best_b /= bin_size
 
-    print("    Mean for bin size 1: {}, Standard deviation for bin size 1: {}".format(best_a, best_b), file=sys.stderr)
     p_stop = perf_counter()
     print("    Mean and standard deviation estimated in {}s".format(p_stop-p_start), file=sys.stderr)
     return best_a, best_b

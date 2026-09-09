@@ -115,6 +115,7 @@ def main():
                 pickle.dump((nodes,edges,coverages,rlen_params,alpha,beta), f)
     elif args.pickle:
         nodes,edges,coverages,rlen_params,alpha,beta = pickle.load(builtins.open(args.pickle, 'rb'))
+    print(f"    Mean for bin size 1: {alpha:.7}, Standard deviation for bin size 1: {beta:.7}", file=sys.stderr)
 
     copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params,
         args.output, args.expen_pen, args.cheap_pen, args.epsilon, args.complexity, args.debug, args.threads)
