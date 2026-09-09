@@ -77,7 +77,7 @@ def edge_cov_pen(d, alpha, ovlp, rlen_params, penalty):
         # We don't have estimated SN distribution, only mean read length (in rlen_params[0]).
         frac_passthrough = int(rlen_params[0] >= ovlp)
     else:
-        frac_passthrough = skewnorm.sf(ovlp, *rlen_params)
+        frac_passthrough = skewnorm.sf(ovlp - 1, *rlen_params)
 
     # Return penalty if edge coverage is smaller than the expected number of reads div 4.
     if d < np.floor(alpha * frac_passthrough / 4):

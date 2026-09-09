@@ -108,3 +108,39 @@ def alpha_and_beta(bins_node, bin_size = 100, ploidies = [1,2]):
     print("    Mean and standard deviation estimated in {}s".format(p_stop-p_start), file=sys.stderr)
     return best_a, best_b
 
+
+def alpha_beta_from_locityper(filename, rlen_params):
+    import json
+    import os.path
+    from scipy.stats import nbinom, skewnorm
+
+    if os.path.isdir(filename):
+        filename = os.path.join(filename, 'distr.gz')
+    with gzip.open(filename, 'rt') as f:
+        content = f.read()
+    params = json.loads(content)
+    depth_params = params['bg_depth']
+    GC_CONTENT = 40
+    window = int(depth_params['window'])
+    # Number of reads starting at each position.
+    r = float(depth_params['n'][GC_CONTENT]) / window
+    p = float(depth_params['p'][GC_CONTENT])
+
+    if np.isnan(rlen_params[1]):
+        # Fixed-sized reads
+        r *= rlen_params[0]
+        alpha = nbinom.mean(r, p)
+        beta = nbinom.std(r, p)
+    else:
+        # Expected number of reads, starting at a given position
+        expected_n_starts = nbinom.mean(r, p)
+        upper_bound = round(skewnorm.isf(1e-8, *rlen_params))
+        skewnorm_sf = skewnorm.sf(np.arange(0.5, upper_bound + 0.5), *rlen_params)
+        sum_sf = np.sum(skewnorm_sf)
+        sum_sf_sq = np.sum(skewnorm_sf ** 2)
+        # coverage mean = mean(NBinom) * sum(Skewnorm survival function)
+        alpha = expected_n_starts * sum_sf
+        # coverage var  = mean(cov) + mean(NBinom) * (1-p) / p * sum(Skewnorm survival function)^2
+        beta = np.sqrt(alpha + expected_n_starts * (1 - p) / p * sum_sf_sq)
+    return alpha, beta
+
