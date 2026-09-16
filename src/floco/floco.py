@@ -33,6 +33,7 @@ def parse_arguments():
     parser.add_argument("-c", "--complexity", type=int, default=2, help="Model complexity (1-3): larger = slower and more accurate. (default: %(default)s)")
     parser.add_argument("-d", "--pickle", type=str, help="Pickle dump with the data. Dump file can be produced with '--debug'.", required=False)
     parser.add_argument("-t", "--threads", type=int, default=1, help="Number of computing threads to use by the ILP solver.", required=False)
+    parser.add_argument("--fix-cn", help="Fix copy number for the given nodes (two column file with nodes and CN).")
     parser.add_argument("--debug", action='store_true' ,help="Produce additional files.", required=False)
     parser.add_argument('-h', '--help', action='help',
         help='Show this help message and exit.')
@@ -96,10 +97,17 @@ def main():
             with builtins.open("{}/dump-{}.tmp.pkl".format(landing_dir, out_base), 'wb') as f:
                 pickle.dump((nodes,edges,coverages,rlen_params,alpha,beta), f)
     elif args.pickle:
-        nodes,edges,coverages,rlen_params,alpha,beta = pickle.load(builtins.open(args.pickle, 'rb'))
+        nodes, edges, coverages, rlen_params, alpha, beta = pickle.load(builtins.open(args.pickle, 'rb'))
     print(f"    Mean for bin size 1: {alpha:.7}, Standard deviation for bin size 1: {beta:.7}", file=sys.stderr)
 
-    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, alpha, beta, rlen_params,
+    fix_cn = []
+    if args.fix_cn:
+        with open(args.fix_cn) as f:
+            for line in f:
+            node, cn = line.strip().split()
+            fix_cn.append((node, int(cn)))
+
+    copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, fix_cn, alpha, beta, rlen_params,
         args.output, args.expen_pen, args.cheap_pen, args.epsilon, args.complexity, args.debug, args.threads)
     print("*** Writing results to output files!", file=sys.stderr)
     write_copynums(copy_numbers, args.output)

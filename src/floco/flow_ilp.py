@@ -28,7 +28,7 @@ def bounds_and_probs(length, coverage, bins, alpha, beta, epsilon, subsampling_d
             length, coverage, binsize, sampled_bins, diff_cutoff)
 
 
-def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
+def ilp(nodes, edges, coverages, fix_cn, alpha, beta, rlen_params, outfile,
         source_prob = -20, cheap_source = -2, epsilon = 0.3, complexity = 2, debug = False, threads = 1):
     '''Function to formulate and solve the ILP for the flow network problem.'''
 
@@ -157,6 +157,9 @@ def ilp(nodes, edges, coverages, alpha, beta, rlen_params, outfile,
                 model.addConstr(sum(edge_flow[e] for e in r_edges_in[node]) == sum(edge_flow[e] for e in l_edges_out[node]), "flow_right_" +node)
                 model.addConstr(sum(edge_flow[e] for e in l_edges_in[node]) + sum(edge_flow[e] for e in r_edges_in[node]) == cn[node], "flow_in_" +node)
                 model.addConstr(sum(edge_flow[e] for e in r_edges_out[node]) + sum(edge_flow[e] for e in l_edges_out[node]) == cn[node], "flow_out_" +node)
+
+        for node, fix_node_cn in fix_cn:
+            model.addConstr(cn[node] == fix_node_cn)
 
         if complexity >= 2:
             edge_flow_pen = sum(edge_flow[edges[e]] * min(0, ctp.edge_cov_pen(edges[e].sup_reads, alpha, edges[e].ovlp, rlen_params, cheap_source)) for e in edges)
