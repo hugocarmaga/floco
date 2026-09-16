@@ -88,10 +88,10 @@ def main():
         clip_nodes(nodes, edges)
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
         coverages, rlen_params = calculate_covs(args.alignment, nodes, edges)
-        bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
         if args.locityper_bg:
             alpha, beta = alpha_beta_from_locityper(args.locityper_bg, rlen_params)
         else:
+            bins_node = filter_bins(nodes, nodes_to_bin, args.bin_size)
             alpha, beta = alpha_and_beta(bins_node, args.bin_size, args.bg_ploidy)
         if args.debug:
             with builtins.open("{}/dump-{}.tmp.pkl".format(landing_dir, out_base), 'wb') as f:
