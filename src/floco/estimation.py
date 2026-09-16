@@ -29,8 +29,10 @@ def filter_bins(nodes, nodes_to_bin, sel_size = 100):
 
     # Remove top and bottom 3% of nodes, based on the mean bin coverage. Then, remove bins with coverage bigger or equal to 3 times the median bin coverage of the node.
     TOP_PERC = 3
+    assert mean_per_node, 'No nodes left'
     thresh = np.quantile(np.array(list(mean_per_node.values())), [TOP_PERC/100, (100 - TOP_PERC)/100])
     bins_node = {node: bins for node,bins in bp_cov_per_node.items() if thresh[0] <= mean_per_node[node] <= thresh[1]}
+    assert bins_node, 'No nodes left after filtering'
 
     f_stop = perf_counter()
     print("    Bins filtered in {}s".format(f_stop-f_start), file=sys.stderr)
