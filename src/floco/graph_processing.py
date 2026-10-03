@@ -1,5 +1,5 @@
 from collections import defaultdict, Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 import numpy as np
 from time import perf_counter
@@ -51,7 +51,7 @@ class Node:
     l_clipping: int = 0
     r_clipping: int = 0
     bins: list = None
-    cn_priors: dict = {}
+    cn_priors: dict = field(default_factory=dict)
 
     def __lt__(self,other):
         return self.clipped_len() < other.clipped_len()
