@@ -88,7 +88,7 @@ def estimate_sample_priors(nodes, sample_n_paths, sample_n_nodes, prior_ploidy, 
     for node in nodes.values():
         obs_cn.clear()
         for sample in samples:
-            obs_cn[sample_n_nodes[node.name]] += 1
+            obs_cn[sample_n_nodes[sample][node.name]] += 1
         for cn, count in obs_cn.items():
             # For previously unobserved CN values priors would be log(1 / (n_samples + 1)).
             # for observed values it would be log(count / (n_samples + 1)).
