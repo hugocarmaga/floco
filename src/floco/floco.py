@@ -110,8 +110,8 @@ def main():
     if args.fix_cn:
         with open(args.fix_cn) as f:
             for line in f:
-            node, cn = line.strip().split()
-            fix_cn.append((node, int(cn)))
+                node, cn = line.strip().split()
+                fix_cn.append((node, int(cn)))
 
     copy_numbers, all_results, concordance = ilp(nodes, edges, coverages, fix_cn, alpha, beta, rlen_params,
         args.output, args.expen_pen, args.cheap_pen, args.epsilon, args.complexity, args.debug, args.threads)
