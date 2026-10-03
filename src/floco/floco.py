@@ -34,6 +34,12 @@ def parse_arguments():
     parser.add_argument("-d", "--pickle", type=str, help="Pickle dump with the data. Dump file can be produced with '--debug'.", required=False)
     parser.add_argument("-t", "--threads", type=int, default=1, help="Number of computing threads to use by the ILP solver.", required=False)
     parser.add_argument("--fix-cn", help="Fix copy number for the given nodes (two column file with nodes and CN).")
+    parser.add_argument("--prior-ploidy", type=str, default='2',
+        help="Estimate priors from GFA paths from samples with this ploidy [%(default)s]. "
+            "Format: one or more numbers concatenated via comma."
+            "Path names must start with the sample name followed by dot (.) or hashtag (#).")
+    parser.add_argument("--prior-weight", type=float, default=1.0,
+        help="Give this weight to CN priors [%(default)s]. Use 0 to disable.")
     parser.add_argument("--debug", action='store_true' ,help="Produce additional files.", required=False)
     parser.add_argument('-h', '--help', action='help',
         help='Show this help message and exit.')
@@ -84,7 +90,7 @@ def main():
 
     import pickle
     if args.alignment:
-        nodes, edges = read_graph(args.graph)
+        nodes, edges, node_priors = read_graph(args.graph, args.prior_ploidy, args.prior_weight)
         clip_nodes(nodes, edges)
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
         coverages, rlen_params = calculate_covs(args.alignment, nodes, edges)

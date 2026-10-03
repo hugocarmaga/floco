@@ -12,7 +12,7 @@ try:
 except ImportError:
     sys.stderr.write('ERROR: Please install gurobipy and obtain corresponding license\n')
 
-def bounds_and_probs(length, coverage, bins, alpha, beta, epsilon, subsampling_dist, diff_cutoff):
+def bounds_and_probs(length, coverage, bins, alpha, beta, epsilon, subsampling_dist, diff_cutoff, cn_priors):
     if bins is None:
         nbins = 0
     else:
@@ -21,11 +21,11 @@ def bounds_and_probs(length, coverage, bins, alpha, beta, epsilon, subsampling_d
 
     if nbins <= 1:
         return ctp.cn_probs(alpha, beta, epsilon,
-            length, coverage, length, [coverage], diff_cutoff)
+            length, coverage, length, [coverage], diff_cutoff, cn_priors)
     else:
         sampled_bins = random.sample(arr_bins.tolist(), nbins)
         return ctp.cn_probs(alpha, beta, epsilon,
-            length, coverage, binsize, sampled_bins, diff_cutoff)
+            length, coverage, binsize, sampled_bins, diff_cutoff, cn_priors)
 
 
 def ilp(nodes, edges, coverages, fix_cn, alpha, beta, rlen_params, outfile,
@@ -45,7 +45,7 @@ def ilp(nodes, edges, coverages, fix_cn, alpha, beta, rlen_params, outfile,
         cn = {} # node: model.addVar(vtype = GRB.INTEGER, lb = 0, name = "cn_"+node)  for node in nodes}
 
         # Probability of cn as piecewise linear function
-        p_cn = {node: model.addVar(vtype = GRB.CONTINUOUS, lb = - GRB.INFINITY, ub = 0, name = "p_cn_"+node) for node in nodes}
+        p_cn = {node: model.addVar(vtype = GRB.CONTINUOUS, lb = -GRB.INFINITY, ub = 0, name = "p_cn_"+node) for node in nodes}
 
         # Edge flow on the two sides of the node - or just one variable for all edges
         edge_flow = {edges[edge]: model.addVar(vtype=GRB.INTEGER, lb = 0, name = edge) for edge in edges}
@@ -104,8 +104,8 @@ def ilp(nodes, edges, coverages, fix_cn, alpha, beta, rlen_params, outfile,
         likeliest_CNs = {}
 
         # Iterate over all nodes to define the constraints
-        for node in nodes:
-            if nodes[node].clipped_len() > 0:
+        for node, node_obj in nodes.items():
+            if node_obj.clipped_len() > 0:
                 # Add nodes to the respective "edge sides" dictionary
                 if (l_edges_in.get(node) or l_edges_out.get(node)) and (r_edges_in.get(node) or r_edges_out.get(node)):
                     double_sides[node] = node
@@ -117,11 +117,11 @@ def ilp(nodes, edges, coverages, fix_cn, alpha, beta, rlen_params, outfile,
                     else:
                         free_both[node] = node
 
-                lower_bound, y = bounds_and_probs(nodes[node].clipped_len(), coverages[node], nodes[node].bins,
-                    alpha, beta, epsilon, subsampling_dist, diff_cutoff)
+                lower_bound, y = bounds_and_probs(node_obj.clipped_len(), coverages[node], node_obj.bins,
+                    alpha, beta, epsilon, subsampling_dist, diff_cutoff, node_obj.cn_priors)
                 upper_bound = lower_bound + len(y)
                 x = list(range(lower_bound, upper_bound))
-                assert len(x)==len(y), "{} is not the same length as {}".format(x,y)
+                assert len(x) == len(y), f"{x} is not the same length as {y}"
 
                 likeliest_CNs[node] = lower_bound + np.argmax(y)
 

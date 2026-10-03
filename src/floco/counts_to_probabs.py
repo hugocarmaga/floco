@@ -18,7 +18,8 @@ def ab_to_rp(m, alpha, beta, epsilon):
 
 def cn_probs(alpha, beta, epsilon,
         full_length, full_cov,
-        bin_size, bin_coverages, diff_cutoff):
+        bin_size, bin_coverages, diff_cutoff,
+        cn_priors):
     """
     Calculates a range of CN probabilities based on parameters α, β & ε.
     Full length and full coverage are used to identify starting point.
@@ -48,7 +49,7 @@ def cn_probs(alpha, beta, epsilon,
         if c - start_cn > MIN_EXTENSION and prob + diff_cutoff < max_prob:
             break
         max_prob = max(prob, max_prob)
-        probs.append(prob)
+        probs.append(prob + cn_priors.get(c, 0.0))
 
     lower_bound = start_cn
     for c in range(start_cn - 1, -1, -1):
@@ -61,7 +62,7 @@ def cn_probs(alpha, beta, epsilon,
         if start_cn - c > MIN_EXTENSION and prob + diff_cutoff < max_prob:
             break
         max_prob = max(prob, max_prob)
-        probs.appendleft(prob)
+        probs.appendleft(prob + cn_priors.get(c, 0.0))
         lower_bound -= 1
 
     probs = np.array(probs)
