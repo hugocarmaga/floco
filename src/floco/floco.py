@@ -90,7 +90,7 @@ def main():
 
     import pickle
     if args.alignment:
-        nodes, edges, node_priors = read_graph(args.graph, args.prior_ploidy, args.prior_weight)
+        nodes, edges = read_graph(args.graph, args.prior_ploidy, args.prior_weight)
         clip_nodes(nodes, edges)
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
         coverages, rlen_params = calculate_covs(args.alignment, nodes, edges)
