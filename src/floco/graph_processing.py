@@ -84,6 +84,7 @@ def estimate_sample_priors(nodes, sample_n_paths, sample_n_nodes, prior_ploidy, 
     n_samples = len(samples)
     if n_samples == 0:
         return
+    sys.stderr.write(f'Estimating CN priors from {n_samples} samples\n')
     obs_cn = Counter()
     for node in nodes.values():
         obs_cn.clear()
