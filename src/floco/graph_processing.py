@@ -1,5 +1,5 @@
-from collections import defaultdict
-from dataclasses import dataclass
+from collections import defaultdict, Counter
+from dataclasses import dataclass, field
 import re
 import numpy as np
 from time import perf_counter
@@ -51,6 +51,7 @@ class Node:
     l_clipping: int = 0
     r_clipping: int = 0
     bins: list = None
+    cn_priors: dict = field(default_factory=dict)
 
     def __lt__(self,other):
         return self.clipped_len() < other.clipped_len()
@@ -76,13 +77,37 @@ class Node:
     def middle_point(self):
         return self.clipped_len() // 2 + self.l_clipping
 
-def read_graph(graph_fname):
+
+def estimate_sample_priors(nodes, sample_n_paths, sample_n_nodes, prior_ploidy, prior_weight):
+    prior_ploidy = set(map(int, prior_ploidy.split(',')))
+    samples = [sample for sample, n_paths in sample_n_paths.items() if n_paths in prior_ploidy]
+    n_samples = len(samples)
+    if n_samples == 0:
+        return
+    sys.stderr.write(f'Estimating CN priors from {n_samples} samples\n')
+    obs_cn = Counter()
+    for node in nodes.values():
+        obs_cn.clear()
+        for sample in samples:
+            obs_cn[sample_n_nodes[sample][node.name]] += 1
+        for cn, count in obs_cn.items():
+            # For previously unobserved CN values priors would be log(1 / (n_samples + 1)).
+            # for observed values it would be log(count / (n_samples + 1)).
+            # Since values will be normalized afterwards, we don't care about denominator.
+            # So, unobserved values will have value 0 and observed values will have value log(count).
+            node.cn_priors[cn] = prior_weight * np.log(count)
+
+
+def read_graph(graph_fname, prior_ploidy, prior_weight):
     '''This function takes a GFA file as an input, and returns a list of Edge objects, and a dictionary of {'node_name': Node object}'''
     print("*** Starting graph preprocessing from {}".format(graph_fname), file=sys.stderr)
     edges = defaultdict()
     nodes = defaultdict()
     g_start = perf_counter()
     tmp_edges = defaultdict()
+    sample_n_paths = Counter()
+    sample_n_nodes = defaultdict(Counter)
+
     with open(graph_fname,"r") as graph_file:
         for line in graph_file:
             columns = line.split()
@@ -94,9 +119,9 @@ def read_graph(graph_fname):
                 nodes[columns[1]] = Node(columns[1], node_len)  #Add Node object as a value to the dictionary of nodes, using the node name as key
 
             # link line
-            if columns[0] == "L":
+            elif columns[0] == "L":
                 #Check if both nodes of the edge are present in the node dictionary, otherwise, store edge in a temporary set to add it later, when we have read all the nodes. This is to avoid problems with the order of the lines in the GFA file, as we can have link lines before sequence lines.
-                if nodes.get(columns[1]) == None or nodes.get(columns[3]) == None:
+                if columns[1] not in nodes or columns[3] not in nodes:
                     tmp_edges["e_{}_{}_{}_{}".format(columns[1],columns[2],columns[3],columns[4])] = Edge(columns[1], columns[3], columns[2]=="+", columns[4]=="+", int(columns[5].strip("M")))
                     continue
                 else:
@@ -112,13 +137,21 @@ def read_graph(graph_fname):
                 elif columns[4] == "-":
                     nodes[columns[3]].r_edges += 1
 
+            elif columns[0] == "P" and prior_weight != 0:
+                sample = re.split('[.#]', columns[1], 1)[0]
+                sample_n_paths[sample] += 1
+                sample_n_nodes[sample].update(node[:-1] for node in columns[2].split(','))
+
+    if prior_weight != 0.0 and sample_n_paths:
+        estimate_sample_priors(nodes, sample_n_paths, sample_n_nodes, prior_ploidy, prior_weight)
+
     # Check whether any edge exist
     if len(edges) == 0 and len(tmp_edges) == 0:
         raise warnings.warn("GFA file has no valid edges. Floco will run but the network flow approach will not have any effect.")
 
     # Now, we add the edges that were stored in the temporary set, as we have already read all the nodes and we know that they are present in the node dictionary.
     for edge in tmp_edges.values():
-        if nodes.get(edge.node1) == None or nodes.get(edge.node2) == None:
+        if edge.node1 not in nodes or edge.node2 not in nodes:
             raise RuntimeError(f'Edge {edge} references nodes that are not present in the GFA file. Please check the GFA file for missing nodes.')
         edges["e_{}_{}_{}_{}".format(edge.node1, "+" if edge.strand1 else "-", edge.node2, "+" if edge.strand2 else "-")] = edge
         # Add number of edges connected to each side of each node
