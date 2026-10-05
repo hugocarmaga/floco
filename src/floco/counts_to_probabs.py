@@ -49,7 +49,8 @@ def cn_probs(alpha, beta, epsilon,
         if c - start_cn > MIN_EXTENSION and prob + diff_cutoff < max_prob:
             break
         max_prob = max(prob, max_prob)
-        probs.append(prob + cn_priors.get(c, 0.0))
+        prior = cn_priors.get(c, 0.0) if cn_priors else 0.0
+        probs.append(prob + prior)
 
     lower_bound = start_cn
     for c in range(start_cn - 1, -1, -1):
@@ -62,7 +63,8 @@ def cn_probs(alpha, beta, epsilon,
         if start_cn - c > MIN_EXTENSION and prob + diff_cutoff < max_prob:
             break
         max_prob = max(prob, max_prob)
-        probs.appendleft(prob + cn_priors.get(c, 0.0))
+        prior = cn_priors.get(c, 0.0) if cn_priors else 0.0
+        probs.appendleft(prob + prior)
         lower_bound -= 1
 
     probs = np.array(probs)

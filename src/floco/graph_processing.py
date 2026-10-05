@@ -1,5 +1,5 @@
 from collections import defaultdict, Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import re
 import numpy as np
 from time import perf_counter
@@ -51,7 +51,7 @@ class Node:
     l_clipping: int = 0
     r_clipping: int = 0
     bins: list = None
-    cn_priors: dict = field(default_factory=dict)
+    cn_priors: dict = None
 
     def __lt__(self,other):
         return self.clipped_len() < other.clipped_len()
@@ -90,12 +90,13 @@ def estimate_sample_priors(nodes, sample_n_paths, sample_n_nodes, prior_ploidy, 
         obs_cn.clear()
         for sample in samples:
             obs_cn[sample_n_nodes[sample][node.name]] += 1
+        node.cn_priors = {}
         for cn, count in obs_cn.items():
             # For previously unobserved CN values priors would be log(1 / (n_samples + 1)).
-            # for observed values it would be log(count / (n_samples + 1)).
+            # for observed values it would be log((count+1) / (n_samples + 1)).
             # Since values will be normalized afterwards, we don't care about denominator.
-            # So, unobserved values will have value 0 and observed values will have value log(count).
-            node.cn_priors[cn] = prior_weight * np.log(count)
+            # So, unobserved values will have value 0 and observed values will have value log(count+1).
+            node.cn_priors[cn] = prior_weight * np.log(count + 1)
 
 
 def read_graph(graph_fname, prior_ploidy, prior_weight):
