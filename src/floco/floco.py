@@ -38,7 +38,7 @@ def parse_arguments():
         help="Estimate priors from GFA paths from samples with this ploidy [%(default)s]. "
             "Format: one or more numbers concatenated via comma."
             "Path names must start with the sample name followed by dot (.) or hashtag (#).")
-    parser.add_argument("--prior-weight", type=float, default=0.05,
+    parser.add_argument("--prior-weight", type=float, default=0.02,
         help="Give this weight to CN priors [%(default)s]. Use 0 to disable.")
     parser.add_argument("--debug", action='store_true' ,help="Produce additional files.", required=False)
     parser.add_argument('-h', '--help', action='help',
