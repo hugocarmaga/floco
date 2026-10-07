@@ -18,22 +18,22 @@ def open(filename, mode='r'):
         return builtins.open(filename, mode)
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(add_help=False)
+    parser = argparse.ArgumentParser(add_help=False, description="floco: Flow-based copy number estimation for genome graphs.", usage="floco -g <graph.gfa> (-a <alignments.gaf> | -d <pickle.pkl>) -o <output.csv> [options]")
 
-    parser.add_argument("-g", "--graph", help="The GFA file with the graph.", required=True)
-    parser.add_argument("-a", "--alignment", help="The GAF file with sequence-to-graph alignments.", required=False)
-    parser.add_argument("-o", "--output", help="The name for the output csv file with the copy numbers.", required=True)
+    parser.add_argument("-g", "--graph", metavar="FILE", help="The GFA file with the graph.", required=True)
+    parser.add_argument("-a", "--alignment", metavar="FILE", help="The GAF file with sequence-to-graph alignments. Cannot be used with '--pickle'.", required=False)
+    parser.add_argument("-o", "--output", metavar="FILE", help="The name for the output csv file with the copy numbers.", required=True)
     parser.add_argument("-p", "--bg-ploidy", type=int, default=[1,2], nargs="+", help="Expected most common CN value in the graph (background ploidy of the dataset). (default:%(default)s)")
-    parser.add_argument("-l", "--locityper-bg",
+    parser.add_argument("-l", "--locityper-bg", metavar="FILE",
         help="Locityper preprocessing data for this sample. Can be used to supplement the parameter estimation step.")
     parser.add_argument("-S", "--expen-pen", type=float, default=-10000, help="Probability for using the super edges when there are other edges available. (default:%(default)s)")
     parser.add_argument("-s", "--cheap-pen", type=float, default=-25, help="Probability for using the super edges when there is no other edge available. (default:%(default)s)")
     parser.add_argument("-e", "--epsilon", type=float, default=0.02, help="Epsilon value for adjusting CN0 counts to probabilities (default:%(default)s)")
     parser.add_argument("-b", "--bin-size", default=100, type=int, help="Set the bin size to use for the NB parameters estimation. (default:%(default)s)")
     parser.add_argument("-c", "--complexity", type=int, default=2, help="Model complexity (1-3): larger = slower and more accurate. (default: %(default)s)")
-    parser.add_argument("-d", "--pickle", type=str, help="Pickle dump with the data. Dump file can be produced with '--debug'.", required=False)
+    parser.add_argument("-d", "--pickle", type=str, metavar="FILE", help="Pickle dump with the data (cannot be used with '--alignment'). Dump file can be produced with '--debug'.", required=False)
     parser.add_argument("-t", "--threads", type=int, default=1, help="Number of computing threads to use by the ILP solver.", required=False)
-    parser.add_argument("--fix-cn", help="Fix copy number for the given nodes (two column file with nodes and CN).")
+    parser.add_argument("--fix-cn", metavar="FILE", help="Fix copy number for the given nodes (two column file with nodes and CN).")
     parser.add_argument("--prior-ploidy", type=str, default='2',
         help="Estimate priors from GFA paths from samples with this ploidy [%(default)s]. "
             "Format: one or more numbers concatenated via comma."
@@ -90,6 +90,7 @@ def main():
 
     import pickle
     if args.alignment:
+        assert not args.pickle, "Cannot use --alignment and --pickle at the same time!"
         nodes, edges = read_graph(args.graph, args.prior_ploidy, args.prior_weight)
         clip_nodes(nodes, edges)
         nodes_to_bin = bin_nodes(nodes, args.bin_size)
@@ -103,6 +104,7 @@ def main():
             with builtins.open("{}/dump-{}.tmp.pkl".format(landing_dir, out_base), 'wb') as f:
                 pickle.dump((nodes,edges,coverages,rlen_params,alpha,beta), f)
     elif args.pickle:
+        assert not args.alignment, "Cannot use --alignment and --pickle at the same time!"
         nodes, edges, coverages, rlen_params, alpha, beta = pickle.load(builtins.open(args.pickle, 'rb'))
     print(f"    Mean for bin size 1: {alpha:.7}, Standard deviation for bin size 1: {beta:.7}", file=sys.stderr)
 

@@ -13,6 +13,7 @@ Floco (_flow_+_copy_) is a tool to call individual node copy number (CN) on (pan
   + [Output](#output)
   + [Command-line options](#command-line-options)
 - [Test Dataset](#test-dataset)
+- [Citation](#citation)
 - [Example applications](#example-applications)
 
 
@@ -71,18 +72,21 @@ Additionally, when using the `--debug` option, Floco will produce further additi
 
 ```bash
 $ floco -h
-usage: floco [-h] -g GRAPH [-a ALIGNMENT] -o OUTPUT [-p BG_PLOIDY [BG_PLOIDY ...]] [-S EXPEN_PEN] [-s CHEAP_PEN] [-e EPSILON] [-b BIN_SIZE] [-c COMPLEXITY] [-d PICKLE PICKLE]
-             [--debug DEBUG]
+usage: floco -g <graph.gfa> (-a <alignments.gaf> | -d <pickle.pkl>) -o <output.csv> [options]
+
+floco: Flow-based copy number estimation for genome graphs.
+
 options:
-  -h, --help            show this help message and exit
-  -g GRAPH, --graph GRAPH
+  -g FILE, --graph FILE
                         The GFA file with the graph.
-  -a ALIGNMENT, --alignment ALIGNMENT
-                        The GAF file with sequence-to-graph alignments.
-  -o OUTPUT, --output OUTPUT
-                        The name for the output csv file with the copy numbers
+  -a FILE, --alignment FILE
+                        The GAF file with sequence-to-graph alignments. Cannot be used with '--pickle'.
+  -o FILE, --output FILE
+                        The name for the output csv file with the copy numbers.
   -p BG_PLOIDY [BG_PLOIDY ...], --bg-ploidy BG_PLOIDY [BG_PLOIDY ...]
                         Expected most common CN value in the graph (background ploidy of the dataset). (default:[1, 2])
+  -l FILE, --locityper-bg FILE
+                        Locityper preprocessing data for this sample. Can be used to supplement the parameter estimation step.
   -S EXPEN_PEN, --expen-pen EXPEN_PEN
                         Probability for using the super edges when there are other edges available. (default:-10000)
   -s CHEAP_PEN, --cheap-pen CHEAP_PEN
@@ -93,11 +97,19 @@ options:
                         Set the bin size to use for the NB parameters estimation. (default:100)
   -c COMPLEXITY, --complexity COMPLEXITY
                         Model complexity (1-3): larger = slower and more accurate. (default: 2)
-  -d PICKLE, --pickle PICKLE
-                        Pickle dump with the data. Dump file can be produced with '--debug'.
+  -d FILE, --pickle FILE
+                        Pickle dump with the data (cannot be used with '--alignment'). Dump file can be produced with '--debug'.
   -t THREADS, --threads THREADS
-                        Number of computing threads to use by the ILP solver. (default: 1)
-  --debug DEBUG         Produce additional files.
+                        Number of computing threads to use by the ILP solver.
+  --fix-cn FILE         Fix copy number for the given nodes (two column file with nodes and CN).
+  --prior-ploidy PRIOR_PLOIDY
+                        Estimate priors from GFA paths from samples with this ploidy [2]. Format: one or more numbers concatenated via comma.Path names must start with the sample name
+                        followed by dot (.) or hashtag (#).
+  --prior-weight PRIOR_WEIGHT
+                        Give this weight to CN priors [0.02]. Use 0 to disable.
+  --debug               Produce additional files.
+  -h, --help            Show this help message and exit.
+  -V, --version         Show program's version number and exit.
 ```
 
 ## Test Dataset
@@ -122,6 +134,15 @@ utig4-733,23057,358577,0
 utig4-731,16975505,295336678,1
 utig4-730,2829470,49583270,1
 ```
+
+## Citation
+
+To cite Floco, please use:
+
+> Magalhães, H., Weber, J., Klau, G. W., Marschall, T., & Prodanov, T. (2025)
+> Sequence-to-graph alignment based copy number calling using a network flow formulation.
+> bioRxiv, 2025-11.
+> https://doi.org/10.1101/2025.11.21.689771
 
 ## Example applications
 
