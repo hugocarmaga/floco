@@ -114,7 +114,7 @@ options:
 
 ## Test Dataset
 
-The test dataset can be found [here](https://zenodo.org/records/17663150). It includes a graph for chromosome 6 from HG01114 and HiFi reads aligned to it with [GraphAligner](https://github.com/maickrau/GraphAligner).
+The test dataset can be found [here](https://zenodo.org/records/23243203). It includes a graph for chromosome 6 from HG01114 and HiFi reads aligned to it with [GraphAligner](https://github.com/maickrau/GraphAligner).
 
 To get copy number values for the test data, simply run:
 ```bash
